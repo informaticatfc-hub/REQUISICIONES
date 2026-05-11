@@ -1,0 +1,19 @@
+{
+    "name": "thefuentes/project",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Thefuentes\\Project\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "yes"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": "^7.2",
+        "mysql/mysql-connector-php": "^8.0"
+    }
+}

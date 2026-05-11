@@ -1,0 +1,6 @@
+service:
+  name: the-fuentes-corp
+  platform: managed
+  region: us-central1
+  ports:
+    - 8080
