@@ -5,13 +5,13 @@
                 define('servidor', getenv('DB_HOST') ?: 'localhost');
             }
             if (!defined('nombre_bd')) {
-                define('nombre_bd', getenv('DB_NAME') ?: 'u701868959_TFC');
+                define('nombre_bd', getenv('DB_NAME') ?: '');
             }
             if (!defined('usuario')) {
-                define('usuario', getenv('DB_USER') ?: 'u701868959_informatica');
+                define('usuario', getenv('DB_USER') ?: '');
             }
             if (!defined('password')) {
-                define('password', getenv('DB_PASS') ?: '2025TFC@ti@sistem');
+                define('password', getenv('DB_PASS') ?: '');
             }
             $opciones = array(  
                 PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
