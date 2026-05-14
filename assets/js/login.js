@@ -33,11 +33,8 @@ function persistLoginData(credentials) {
         // Silencioso: el login no debe fallar por storage bloqueado.
     }
 
-    try {
-        localStorage.setItem("NameUser", credentials.user_id);
-    } catch (error) {
-        // Compatibilidad legacy.
-    }
+    // Fase 5: la identidad ahora vive en la sesion PHP (tf_current_user).
+    // Ya no escribimos localStorage.NameUser para evitar identity client-side.
 }
 
 document.addEventListener("DOMContentLoaded", function () {

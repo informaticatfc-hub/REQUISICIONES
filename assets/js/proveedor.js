@@ -31,13 +31,15 @@ const appRequesition = new Vue({
         NameUser: "",
     },
     methods: {
-        consultarUsuario: function (user_id) {
-            axios.post(url, { accion: 1, id_user: user_id }).then(response => {
-                this.users = response.data;
-                this.NameUser = this.users[0].user_name;
-                console.log(this.users);
+        consultarUsuario: function () {
+            // Fase 5: identidad por sesion server-side (sin localStorage.NameUser)
+            axios.post(url, { accion: 1 }).then(response => {
+                this.users = response.data || [];
+                if (this.users[0] && this.users[0].user_name) {
+                    this.NameUser = this.users[0].user_name;
+                }
             }).catch(error => {
-                console.error("Error al obtener las obras:", error);
+                console.error("consultarUsuario:", error);
             });
         },
         listarObras: function () {
@@ -343,7 +345,7 @@ const appRequesition = new Vue({
     },
     mounted: async function () {
         await this.listarObras();
-        await this.consultarUsuario(localStorage.getItem("NameUser"));
+        await this.consultarUsuario();
         await this.obtenerProveedores();
     },
     computed: {

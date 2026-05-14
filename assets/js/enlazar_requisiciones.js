@@ -71,17 +71,16 @@ const appRequesition = new Vue({
                 console.error("Error al listar requisiciones:", error);
             }
         },
-        consultarUsuario: async function (user_id) {
+        consultarUsuario: async function () {
+            // Fase 5: identidad por sesion server-side (sin localStorage.NameUser)
             try {
-                const response = await axios.post(url, { accion: 2, id_user: user_id });
-                this.users = response.data;
-                // Verifica si hay datos en la respuesta
-                if (this.users.length > 0) {
+                const response = await axios.post(url, { accion: 2 });
+                this.users = response.data || [];
+                if (this.users.length > 0 && this.users[0].user_name) {
                     this.NameUser = this.users[0].user_name;
-                    console.log(this.users);
                 } else {
                     console.warn("No se encontraron usuarios.");
-                    this.NameUser = null; // O maneja esto de otra manera según tu lógica
+                    this.NameUser = null;
                 }
             } catch (error) {
                 console.error("Error al consultar usuario:", error);
@@ -137,7 +136,7 @@ const appRequesition = new Vue({
     },
     mounted: async function () {
         await this.listarObras();
-        await this.consultarUsuario(localStorage.getItem("NameUser"));
+        await this.consultarUsuario();
         await this.infoObraActiva(localStorage.getItem("obraActiva"));
         await this.consultarInfoPresion(localStorage.getItem("IdPresion"));
         await this.listarRequisiciones(localStorage.getItem("obraActiva"));

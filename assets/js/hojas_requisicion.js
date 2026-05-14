@@ -73,12 +73,14 @@ const appRequesition = new Vue({
                 console.error("Error al obtener las hojas", error);
             }
         },
-        consultarUsuario: async function (user_id) {
+        consultarUsuario: async function () {
+            // Fase 5: identidad por sesion server-side (sin localStorage.NameUser)
             try {
-                const response = await axios.post(url, { accion: 2, id_user: user_id });
-                this.users = response.data;
-                this.NameUser = this.users[0].user_name;
-                console.log(this.users);
+                const response = await axios.post(url, { accion: 2 });
+                this.users = response.data || [];
+                if (this.users.length > 0 && this.users[0].user_name) {
+                    this.NameUser = this.users[0].user_name;
+                }
             } catch (error) {
                 console.error("Error al obtener la información del usuario", error);
             }
@@ -191,7 +193,7 @@ const appRequesition = new Vue({
     mounted: async function () {
         await this.listarObras();
         await this.infoObraActiva(localStorage.getItem("obraActiva"));
-        await this.consultarUsuario(localStorage.getItem("NameUser"));
+        await this.consultarUsuario();
         await this.infoReqActiva(localStorage.getItem("idRequisicion"));
         await this.listarHojas(localStorage.getItem("idRequisicion"));
     },
