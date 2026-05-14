@@ -173,7 +173,7 @@ include_once '../validarSesion.php';
                 <div class="page-hdr">
                     <div class="page-hdr-left">
                         <h2 class="page-title">Reportes KPI - Direccion</h2>
-                        <p class="page-lead">Analitica de gastos por obra con filtros por semana, mes o acumulado total.</p>
+                        <p class="page-lead">Desglose profesional de gastos por fecha. Selecciona obra y rango para consultar.</p>
                     </div>
                 </div>
 
@@ -182,48 +182,30 @@ include_once '../validarSesion.php';
                         <div class="col-md-3">
                             <label class="form-label">Obra</label>
                             <select class="form-select" v-model="filtros.obraId">
-                                <option value="0">Todas las obras</option>
+                                <option value="">Selecciona una obra</option>
                                 <option v-for="obra in obras" :value="String(obra.obras_id)">{{obra.obras_nombre}}</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Periodo</label>
-                            <select class="form-select" v-model="filtros.periodo">
-                                <option value="total">Total</option>
-                                <option value="semana">Semana</option>
-                                <option value="mes">Mes</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label">Desde</label>
                             <input class="form-control" type="date" v-model="filtros.desde">
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label">Hasta</label>
                             <input class="form-control" type="date" v-model="filtros.hasta">
                         </div>
-                        <div class="col-md-1">
-                            <label class="form-label">Umbral medio %</label>
-                            <input class="form-control" type="number" min="0" step="0.1" v-model.number="umbral.medio">
-                        </div>
-                        <div class="col-md-1">
-                            <label class="form-label">Umbral alto %</label>
-                            <input class="form-control" type="number" min="0" step="0.1" v-model.number="umbral.alto">
-                        </div>
-                        <div class="col-md-1">
+                        <div class="col-md-3">
                             <label class="form-label">&nbsp;</label>
                             <button class="btn btn-primary w-100" type="button" @click="aplicarFiltros">Aplicar</button>
                         </div>
                         <div class="col-12 d-flex flex-wrap gap-2 mt-2">
                             <button class="btn btn-secondary" type="button" @click="exportarCsv">CSV</button>
                             <button class="btn btn-secondary" type="button" @click="exportarPdf">PDF</button>
-                            <span class="threshold-chip">Medio > {{umbral.medio}}%</span>
-                            <span class="threshold-chip">Alto > {{umbral.alto}}%</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="ops-hero-grid">
+                <div v-if="consultaAplicada" class="ops-hero-grid">
                     <div class="quick-tile">
                         <span class="quick-tile-label">Presiones</span>
                         <span class="quick-tile-value">{{kpi.presiones}}</span>
@@ -237,104 +219,12 @@ include_once '../validarSesion.php';
                         <span class="quick-tile-value">{{money(kpi.adeudo)}}</span>
                     </div>
                 </div>
-
-                <div class="executive-grid">
-                    <div class="executive-card">
-                        <div class="label">Semana actual</div>
-                        <div class="value">{{money(ejecutivo.totalSemanaActual)}}</div>
-                        <div class="sub">{{ejecutivo.semanaActualLabel}}</div>
-                    </div>
-                    <div class="executive-card">
-                        <div class="label">Semana anterior</div>
-                        <div class="value">{{money(ejecutivo.totalSemanaAnterior)}}</div>
-                        <div class="sub">{{ejecutivo.semanaAnteriorLabel}}</div>
-                    </div>
-                    <div class="executive-card">
-                        <div class="label">Variacion semanal</div>
-                        <div class="value" :class="variacionClass(ejecutivo.variacionSemana)">{{ejecutivo.variacionTexto}}</div>
-                        <div class="sub">Comparativo de gasto total semanal</div>
-                    </div>
-                    <div class="executive-card">
-                        <div class="label">Obras riesgo alto</div>
-                        <div class="value">{{ejecutivo.riesgoAltoCount}}</div>
-                        <div class="sub">Desviacion mayor al umbral alto</div>
-                    </div>
-                </div>
-
-                <div class="executive-alert-box" v-if="alertasEjecutivas.length">
-                    <div class="kpi-block-title">Alertas Ejecutivas Prioritarias</div>
-                    <div class="executive-alert-item" v-for="a in alertasEjecutivas" :key="a.obra">
-                        <strong>{{a.obra}}</strong>
-                        <span class="ms-2">Estado: {{a.estado}}</span>
-                        <span class="ms-2">Desviacion: {{a.desviacionPct.toFixed(2)}}%</span>
-                        <span class="ms-2">Monto: {{money(a.montoDesviado)}}</span>
-                    </div>
-                </div>
-
-                <div class="row g-3 mb-3">
-                    <div class="col-lg-6">
-                        <div class="kpi-block-title">Top 10 Obras por Gasto</div>
-                        <div class="kpi-table-wrap">
-                            <table class="table table-hover align-middle kpi-table">
-                                <thead>
-                                    <tr>
-                                        <th>OBRA</th>
-                                        <th>PRESIONES</th>
-                                        <th>TOTAL GASTOS</th>
-                                        <th>TOTAL ADEUDO</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="r in topObras" :key="'top_'+r.obra">
-                                        <td>{{r.obra}}</td>
-                                        <td>{{r.presiones}}</td>
-                                        <td>{{money(r.total)}}</td>
-                                        <td>{{money(r.adeudo)}}</td>
-                                    </tr>
-                                    <tr v-if="!topObras.length">
-                                        <td colspan="4" class="text-center text-muted py-3">Sin datos para top de obras.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="kpi-block-title">Semaforo de Desviacion (Adeudo vs Gasto)</div>
-                        <div class="kpi-table-wrap">
-                            <table class="table table-hover align-middle kpi-table">
-                                <thead>
-                                    <tr>
-                                        <th>ESTADO</th>
-                                        <th>OBRA</th>
-                                        <th>DESVIACION</th>
-                                        <th>MONTO DESVIADO</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="r in semaforoObras" :key="'sem_'+r.obra">
-                                        <td>
-                                            <span class="semaforo-dot" :class="semaforoDotClass(r.estado)"></span>
-                                            {{r.estado}}
-                                        </td>
-                                        <td>{{r.obra}}</td>
-                                        <td>{{r.desviacionPct.toFixed(2)}}%</td>
-                                        <td>{{money(r.montoDesviado)}}</td>
-                                    </tr>
-                                    <tr v-if="!semaforoObras.length">
-                                        <td colspan="4" class="text-center text-muted py-3">Sin datos para semaforo.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="kpi-table-wrap">
+                <div v-if="consultaAplicada" class="kpi-table-wrap">
                     <table class="table table-hover align-middle kpi-table">
                         <thead>
                             <tr>
                                 <th>OBRA</th>
-                                <th>PERIODO</th>
+                                <th>FECHA</th>
                                 <th>PRESIONES</th>
                                 <th>HOJAS LIGADAS</th>
                                 <th>TOTAL GASTOS</th>
@@ -345,7 +235,7 @@ include_once '../validarSesion.php';
                         <tbody>
                             <tr v-for="r in reporteAgrupado" :key="r.key">
                                 <td>{{r.obra}}</td>
-                                <td>{{r.periodo}}</td>
+                                <td>{{r.fecha}}</td>
                                 <td>{{r.presiones}}</td>
                                 <td>{{r.hojas}}</td>
                                 <td>{{money(r.total)}}</td>
@@ -358,6 +248,10 @@ include_once '../validarSesion.php';
                         </tbody>
                     </table>
                 </div>
+
+                <div v-else class="kpi-filter-box text-center text-muted">
+                    Selecciona una obra, define fechas si aplica y presiona <strong>Aplicar</strong> para mostrar el desglose.
+                </div>
             </div>
         </div>
     </div>
@@ -369,7 +263,7 @@ include_once '../validarSesion.php';
     <script src="../assets/lib/sweetalert/sweetalert2.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    <script src="../assets/js/reportes_kpi.js"></script>
+    <script src="../assets/js/reportes_kpi.js?v=fase07b"></script>
 </body>
 
 </html>

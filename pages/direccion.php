@@ -142,8 +142,8 @@ include_once '../validarSesion.php';
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
 
     <!-- scripts constume-->
-    <script src="../assets/js/direccion.js"></script>
-    <script src="../assets/js/layout_sidebar.js"></script>
+    <script src="../assets/js/direccion.js?v=fase07"></script>
+    <script src="../assets/js/layout_sidebar.js?v=fase07b"></script>
 </body>
 
 </html>

@@ -7,90 +7,58 @@
 
         var sidebar = document.getElementById('sidebar');
         var navbarContainer = document.querySelector('.app-navbar .container-fluid');
-
         if (!sidebar || !navbarContainer) {
             return;
         }
 
-        var storageKey = 'tf_sidebar_collapsed';
-        var storedState = localStorage.getItem(storageKey);
-        var isMobile = window.matchMedia('(max-width: 767px)').matches;
-        var shouldCollapse = storedState === null ? isMobile : storedState === 'true';
-
-        var toggleButton = document.createElement('button');
-        toggleButton.type = 'button';
-        toggleButton.className = 'sidebar-toggle-btn';
-        toggleButton.setAttribute('aria-label', 'Mostrar u ocultar menu lateral');
-
-        var burger = document.createElement('span');
-        burger.className = 'sidebar-toggle-icon';
-        burger.setAttribute('aria-hidden', 'true');
-
-        for (var i = 0; i < 3; i++) {
-            var line = document.createElement('span');
-            line.className = 'sidebar-toggle-line';
-            burger.appendChild(line);
+        var links = Array.from(sidebar.querySelectorAll('#sideBarItem a.nav-link[href], #sidebar > .dropdown > a[href]'));
+        if (!links.length) {
+            return;
         }
 
-        var label = document.createElement('span');
-        label.className = 'sidebar-toggle-label';
-        label.textContent = 'Menu';
+        var unique = {};
+        var actions = links
+            .map(function (a) {
+                var href = a.getAttribute('href') || '#';
+                var label = (a.textContent || '').trim();
+                return { href: href, label: label || 'Accion' };
+            })
+            .filter(function (item) {
+                var key = item.href + '|' + item.label;
+                if (unique[key]) return false;
+                unique[key] = true;
+                return true;
+            });
 
-        toggleButton.appendChild(burger);
-        toggleButton.appendChild(label);
-        navbarContainer.insertBefore(toggleButton, navbarContainer.firstChild);
-
-        var backdrop = document.createElement('button');
-        backdrop.type = 'button';
-        backdrop.className = 'sidebar-backdrop';
-        backdrop.setAttribute('aria-label', 'Cerrar menu lateral');
-        body.appendChild(backdrop);
-
-        function isMobileViewport() {
-            return window.matchMedia('(max-width: 767px)').matches;
+        if (!actions.length) {
+            return;
         }
 
-        function applyState(collapsed) {
-            body.classList.toggle('sidebar-collapsed', collapsed);
-            toggleButton.setAttribute('aria-expanded', (!collapsed).toString());
-            toggleButton.classList.toggle('is-collapsed', collapsed);
-            if (isMobileViewport()) {
-                backdrop.classList.toggle('is-visible', !collapsed);
-            } else {
-                backdrop.classList.remove('is-visible');
-            }
-        }
+        var wrap = document.createElement('div');
+        wrap.className = 'dropdown me-2';
 
-        function setCollapsed(collapsed, persist) {
-            if (persist) {
-                localStorage.setItem(storageKey, collapsed ? 'true' : 'false');
-            }
-            applyState(collapsed);
-        }
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sidebar-toggle-btn';
+        btn.setAttribute('data-bs-toggle', 'dropdown');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'Abrir acciones');
+        btn.innerHTML = '<span class="sidebar-toggle-icon" aria-hidden="true"><span class="sidebar-toggle-line"></span><span class="sidebar-toggle-line"></span><span class="sidebar-toggle-line"></span></span><span class="sidebar-toggle-label">Acciones</span>';
 
-        applyState(shouldCollapse);
+        var menu = document.createElement('div');
+        menu.className = 'dropdown-menu shadow';
+        menu.style.minWidth = '220px';
 
-        toggleButton.addEventListener('click', function () {
-            var collapsed = !body.classList.contains('sidebar-collapsed');
-            setCollapsed(collapsed, true);
+        actions.forEach(function (item) {
+            var a = document.createElement('a');
+            a.className = 'dropdown-item';
+            a.href = item.href;
+            a.textContent = item.label;
+            menu.appendChild(a);
         });
 
-        backdrop.addEventListener('click', function () {
-            setCollapsed(true, true);
-        });
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && !body.classList.contains('sidebar-collapsed')) {
-                setCollapsed(true, true);
-            }
-        });
-
-        window.addEventListener('resize', function () {
-            if (!isMobileViewport()) {
-                backdrop.classList.remove('is-visible');
-            } else {
-                backdrop.classList.toggle('is-visible', !body.classList.contains('sidebar-collapsed'));
-            }
-        });
+        wrap.appendChild(btn);
+        wrap.appendChild(menu);
+        navbarContainer.insertBefore(wrap, navbarContainer.firstChild);
     });
 })();

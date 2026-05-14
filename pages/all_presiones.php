@@ -295,7 +295,7 @@ include_once '../validarSesion.php';
                                             </div>
                                         </div>
                                         <div class="col-lg-5 d-flex gap-2 justify-content-lg-end">
-                                            <span class="chip-count" title="Filas editadas">{{conteoFilasEditadas(obra)}}</span>
+                                            <span class="chip-count" title="Filas editadas">{{(obra.Presion_Obra || []).filter(function(row){ return !!row._dirty; }).length}}</span>
                                             <button type="button" class="btn btn-success" @click="consultarTotales(obra.total_Glabal, obra.total_Global_Aut, obra.total_Efectivo, obra.total_Efectivo_Aut, obra.total_Transferencia, obra.total_Transferencia_Aut, obra.total_Global_Rechazado, obra.total_Efectivo_Rechazado, obra.total_Transferencia_Rechazado, obra.Nombre_Obra)">
                                                 Consultar Totales
                                             </button>
@@ -420,8 +420,8 @@ include_once '../validarSesion.php';
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
 
     <!-- scripts constume-->
-    <script src="../assets/js/all_presiones.js"></script>
-    <script src="../assets/js/layout_sidebar.js"></script>
+    <script src="../assets/js/all_presiones.js?v=fase07b"></script>
+    <script src="../assets/js/layout_sidebar.js?v=fase07b"></script>
 </body>
 
 </html>
