@@ -60,6 +60,45 @@ $csp = "default-src 'self'; "
 3. Network tab: las requests de `.map` deben retornar **200 OK** (o 404 si el CDN no las publica, pero **sin bloqueo CSP**).
 4. Funcionalidad de la app: identica (los `.map` no afectan la ejecucion, solo el debugging).
 
+### Hotfix Fase 4b — el CSP de `.htaccess` pisaba al de PHP
+
+Al desplegar PR #5 el error CSP persistia. Diagnostico:
+
+- `tf_security_headers()` corre y emite el header bueno via `header()`.
+- Apache, con `Header always set Content-Security-Policy ...` en el `.htaccess` raiz,
+  **reemplaza** ese header en la respuesta final. El directive `always set` se
+  aplica incluso si PHP ya escribio el mismo header.
+- El `.htaccess` quedo con la version vieja del CSP (`connect-src 'self'`) de
+  Fase 2, asi que el fix en PHP nunca llego al navegador.
+
+Resolucion: sincronizar el CSP del `.htaccess` con el de `tf_security_headers()`
+(mismos origenes en `connect-src` + `script-src-elem` + `style-src-elem` +
+hardening). Ahora ambos son identicos, sea cual sea la fuente que gane.
+
+```apache
+Header always set Content-Security-Policy "default-src 'self'; \
+    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://code.jquery.com https://unpkg.com; \
+    script-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://code.jquery.com https://unpkg.com; \
+    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://fonts.googleapis.com; \
+    style-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://fonts.googleapis.com; \
+    font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; \
+    img-src 'self' data: https://cdn.jsdelivr.net; \
+    connect-src 'self' https://cdn.jsdelivr.net https://cdn.datatables.net https://unpkg.com; \
+    frame-ancestors 'self'; \
+    base-uri 'self'; \
+    form-action 'self'; \
+    object-src 'none'"
+```
+
+**Prueba rapida para verificar despues del deploy:**
+
+1. DevTools -> Network -> click en la request HTML principal -> tab Headers.
+2. Buscar `content-security-policy` en Response Headers.
+3. Tiene que aparecer `connect-src 'self' https://cdn.jsdelivr.net ...`.
+   Si todavia dice `connect-src 'self'` a secas, el archivo `.htaccess`
+   no esta desplegado o el hosting (Hostinger) inyecta un CSP propio
+   desde panel de control -> en ese caso, desactivarlo desde el panel.
+
 
 ## 2) Migracion SQL `2026_05_14_002_adaptacion_bd_real.sql`
 
