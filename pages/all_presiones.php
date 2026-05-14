@@ -1,5 +1,17 @@
 <?php
 include_once '../validarSesion.php';
+require_once __DIR__ . '/../api/rbac.php';
+require_once __DIR__ . '/../api/conexion.php';
+
+$__pdo  = (new Conexion())->Conectar();
+$__user = tf_current_user($__pdo);
+$__roleCode = $__user['role']['code'] ?? '';
+$__dirAcc = (int)($__user['user_directionAcess'] ?? 0);
+
+if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
+    header('Location: ./index.php');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -21,8 +33,6 @@ include_once '../validarSesion.php';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">-->
     <!-- esta es la llamada local-->
     <link rel="stylesheet" href="../assets/lib/bootstrap/css/bootstrap.min.css">
-    <!--Esta es la llamada CSS de data table-->
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css">
     <!--llamar a mi documento de CSS-->
     <link rel="stylesheet" href="../assets/css/main.css">
     <style>
@@ -234,12 +244,8 @@ include_once '../validarSesion.php';
             </div>
         </div>
         <div class="d-flex flex-column flex-shrink-0 h-100 position-fixed top-0 end-0 app-main">
-            <!--Navbar-->
-            <nav class="navbar app-navbar">
-                <div class="container-fluid">
-                    <span class="navbar-brand text-light text-center w-100 fw-bolder">The Fuentes Corporation Workspace</span>
-                </div>
-            </nav>
+            <!--Navbar unificada-->
+            <?php include __DIR__ . '/../includes/legacy_navbar.php'; ?>
             <nav class="nav shadow-sm d-flex align-items-center" id="navtab" aria-label="breadcrumb" aria-current="page">
                 <ol class="breadcrumb py-2 px-3 my-0">
                     <li class="breadcrumb-item">
@@ -252,17 +258,11 @@ include_once '../validarSesion.php';
                     <li class="breadcrumb-item active" aria-current="page"><span>Presiones de todas la Obras</span></li>
                 </ol>
             </nav>
-            <div class="director-shortcuts">
-                <button type="button" class="btn btn-secondary" @click="window.location.href='./direccion.php'">Menu Direccion</button>
-                <button type="button" class="btn btn-secondary" @click="window.location.href='./menu_catalago.php'">Catalogos</button>
-                <button type="button" class="btn btn-secondary" @click="window.location.href='./index.php'">Inicio</button>
-                <button type="button" class="btn btn-danger ms-auto" @click="window.location.href='./closeSesion.php'">Cerrar Sesion</button>
-            </div>
             <div class="container page-shell overflow-auto page-content">
                 <div class="page-hdr">
                     <div class="page-hdr-left">
                         <h2 class="page-title">Presiones Pendientes &mdash; Todas las Obras</h2>
-                        <p class="page-lead">Presiones pendientes de autorizacion y pago en todas las obras activas. Ahora puedes usar formulas tipo Excel para calcular montos autorizados por fila o por obra completa.</p>
+                        <p class="page-lead">Gestion tipo Excel para autorizacion de pagos. Puedes editar celdas y tambien importar o exportar archivos Excel por obra.</p>
                         <div class="obras-chip mt-2">
                             <span class="obras-chip-dot"></span>
                             Vista de Direccion
@@ -280,25 +280,8 @@ include_once '../validarSesion.php';
                             <div v-bind:id="'collapse'+ quitarEspacios(obra.Nombre_Obra)" class="'accordion-collapse collapse ' + obra.colapse_show" data-bs-parent="#accordionExample">
                                 <div class="accordion-body">
                                     <div class="row g-2 align-items-end mb-3">
-                                        <div class="col-lg-7">
-                                            <div class="formula-bar">
-                                                <div class="row g-2 align-items-end">
-                                                    <div class="col-lg-8">
-                                                        <label class="form-label mb-1">Formula global (tipo Excel)</label>
-                                                        <input type="text" class="form-control" placeholder="Ejemplo: =IF(ADEUDO>5000,ADEUDO*0.9,ADEUDO)" v-model="obra.formulaGlobal">
-                                                        <div class="formula-help mt-1">Variables: <strong>ADEUDO</strong>/<strong>TOTAL</strong>, <strong>AUT</strong>. Funciones: <strong>MIN()</strong>, <strong>MAX()</strong>, <strong>AVG()</strong>, <strong>SUM()</strong>, <strong>ROUND(valor,decimales)</strong>, <strong>IF(condicion,si,siNo)</strong>.</div>
-                                                    </div>
-                                                    <div class="col-lg-4 d-flex gap-2">
-                                                        <button type="button" class="btn btn-primary w-100" @click="aplicarFormulaGlobal(index)">Aplicar Formula</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-5 d-flex gap-2 justify-content-lg-end">
+                                        <div class="col-lg-12 d-flex gap-2 justify-content-lg-end">
                                             <span class="chip-count" title="Filas editadas">{{(obra.Presion_Obra || []).filter(function(row){ return !!row._dirty; }).length}}</span>
-                                            <button type="button" class="btn btn-success" @click="consultarTotales(obra.total_Glabal, obra.total_Global_Aut, obra.total_Efectivo, obra.total_Efectivo_Aut, obra.total_Transferencia, obra.total_Transferencia_Aut, obra.total_Global_Rechazado, obra.total_Efectivo_Rechazado, obra.total_Transferencia_Rechazado, obra.Nombre_Obra)">
-                                                Consultar Totales
-                                            </button>
                                             <button type="button" class="btn btn-secondary" @click="mostrarAyudaRapida()">Ayuda</button>
                                         </div>
                                         <div class="col-12">
@@ -331,6 +314,9 @@ include_once '../validarSesion.php';
                                                 <button class="btn btn-danger" type="button" @click="rechazarTodoObra(index)">Rechazar todo</button>
                                                 <button class="btn btn-secondary" type="button" @click="restaurarCambiosObra(index)">Restaurar</button>
                                                 <button class="btn btn-secondary" type="button" @click="exportarCsvObra(index)">Exportar CSV</button>
+                                                <button class="btn btn-secondary" type="button" @click="exportarExcelObra(index)">Exportar Excel</button>
+                                                <button class="btn btn-secondary" type="button" @click="triggerImportExcel(index)">Importar Excel</button>
+                                                <input type="file" :id="'excelImport'+index" accept=".xlsx,.xls" class="d-none" @change="importarExcelObra($event,index)">
                                             </div>
                                             <div class="excel-toolbar">
                                                 <div class="excel-name-box">{{selectedCellLabel || 'Sin celda seleccionada'}}</div>
@@ -338,7 +324,7 @@ include_once '../validarSesion.php';
                                                 <button class="btn btn-primary" type="button" @click="aplicarFormulaBarra(index)">Aplicar</button>
                                             </div>
                                             <div class="excel-table-wrap">
-                                            <table id="example" class="table table-prof excel-grid align-middle w-100">
+                                            <table class="table table-prof excel-grid align-middle w-100">
                                                 <thead class="table-dark">
                                                     <tr>
                                                         <th scope="col" class="fs-6">CLAVE</th>
@@ -415,12 +401,10 @@ include_once '../validarSesion.php';
     <!--scripts de sweetalert-->
     <script src="../assets/lib/sweetalert/sweetalert2.min.js"></script>
 
-    <!--esta es la llamada cdn de datatable-->
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <!-- scripts constume-->
-    <script src="../assets/js/all_presiones.js?v=fase07b"></script>
+    <script src="../assets/js/all_presiones.js?v=fase07e"></script>
     <script src="../assets/js/layout_sidebar.js?v=fase07b"></script>
 </body>
 

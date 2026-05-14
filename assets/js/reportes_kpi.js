@@ -49,7 +49,11 @@ const appKpiDireccion = new Vue({
             this.presionesRaw = resp.data || [];
         },
 
-        aplicarFiltros: function () {
+        aplicarFiltros: async function () {
+            if (!this.presionesRaw.length) {
+                await this.cargarResumen();
+            }
+
             var obraId = Number(this.filtros.obraId || 0);
             var desde = this.filtros.desde;
             var hasta = this.filtros.hasta;
@@ -191,8 +195,11 @@ const appKpiDireccion = new Vue({
     },
     created: async function () {
         try {
+            var obraActiva = localStorage.getItem('obraActiva');
+            if (obraActiva) {
+                this.filtros.obraId = String(obraActiva);
+            }
             await this.cargarCatalogos();
-            await this.cargarResumen();
         } catch (error) {
             console.error("Error cargando reportes KPI:", error);
             Swal.fire("Error", "No se pudo cargar la informacion KPI", "error");
