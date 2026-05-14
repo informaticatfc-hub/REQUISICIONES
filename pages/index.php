@@ -1,190 +1,295 @@
-﻿<?php
+<?php
 include_once '../validarSesion.php';
+
+// ----------------------------------------------------------------
+// Datos del usuario en sesion (preparado para RBAC en Fase 2)
+// ----------------------------------------------------------------
+$usuario_sesion = $_SESSION['Usuario']           ?? '';
+$usuario_nombre = $_SESSION['UsuarioNombre']     ?? $usuario_sesion;
+$usuario_rol    = $_SESSION['UsuarioRol']        ?? 'Residente';
+$usuario_dirAcc = (int)($_SESSION['UsuarioDirAccess'] ?? 0);
+
+// ----------------------------------------------------------------
+// Variables del layout
+// ----------------------------------------------------------------
+$tf_page_title     = 'Inicio';
+$tf_active_nav     = 'inicio';
+$tf_breadcrumb     = [['Inicio', './index.php']];
+$tf_user           = [
+    'name'     => $usuario_nombre,
+    'role'     => $usuario_rol,
+    'initials' => '',
+];
+$tf_show_direccion = $usuario_dirAcc === 1;
+$tf_show_admin     = ($usuario_rol === 'Admin' || $usuario_rol === 'admin');
+$tf_show_subbar    = true;
+$tf_user_id_js     = (string)$usuario_sesion;
+
+// Acciones rapidas en la sub-bar
+$tf_subbar_extra = '
+    <div class="tf-subbar-actions">
+        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" onclick="window.TfLayout && window.TfLayout.openCmd()">
+            <i class="bi bi-search"></i> Buscar
+        </button>
+        <a href="./menu_catalago.php" class="tf-btn tf-btn-secondary tf-btn-sm">
+            <i class="bi bi-collection"></i> Catalogos
+        </a>
+    </div>
+';
+
+include __DIR__ . '/../includes/layout_top.php';
 ?>
-<!DOCTYPE html>
-<html>
 
-<head>
-    <meta charset="utf8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <link rel="icon" type="image/jpg" href="../images/TheFuenteIcon.png" />
-    <!--llamar a la extension de sweet alert-->
-    <link rel="stylesheet" href="../assets/lib/sweetalert/sweetalert2.min.css">
-    <!-- fuente de Roboto flex-->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap" rel="stylesheet">
-    <!--Fuentes de Iconos-->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <!--llamar a la extension de bootstrap-->
-    <!-- esta es la llamada via CDN-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">-->
-    <!-- esta es la llamada local-->
-    <link rel="stylesheet" href="../assets/lib/bootstrap/css/bootstrap.min.css">
-    <!--Esta es la llamada CSS de data table-->
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css">
-    <!--llamar a mi documento de CSS-->
-    <link rel="stylesheet" href="../assets/css/main.css">
-    <title>Inicio:: The Fuentes Corporation</title>
-</head>
+<div id="AppIndex" class="tf-page-inner">
 
-<body class="app-layout">
-    <div id="AppIndex">
-        <!--sidebar-->
-        <div class="d-flex flex-column flex-shrink-0 p-3 text-white position-fixed top-0 start-0 h-100 app-sidebar" id="sidebar">
-            <div class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
-                <div class="d-flex flex-row">
-                    <div class="d-flex align-items-center me-3">
-                        <img src="../images/icons/user.svg" alt="user-icon" height="60" width="60">
-                    </div>
-                    <div class="d-flex flex-column my-3">
-                        <span class="fs-5"> {{NameUser}}</span>
-                    </div>
-                </div>
+    <!-- ============================================================
+         Page header
+         ============================================================ -->
+    <header class="tf-page-header">
+        <div>
+            <span class="tf-eyebrow">Panel principal</span>
+            <h1 class="tf-page-title">Bienvenido, <span v-cloak>{{ NameUser || '<?= htmlspecialchars($usuario_nombre) ?>' }}</span></h1>
+            <p class="tf-page-lead">
+                Resumen del espacio de trabajo. Selecciona una obra o modulo para comenzar.
+            </p>
+        </div>
+        <div class="tf-page-header-actions">
+            <a href="./nueva_requisicion.php" class="tf-btn tf-btn-primary">
+                <i class="bi bi-file-earmark-plus"></i> Nueva requisicion
+            </a>
+        </div>
+    </header>
+
+    <!-- ============================================================
+         KPI grid
+         ============================================================ -->
+    <section class="tf-kpi-grid" aria-label="Resumen rapido">
+        <article class="tf-kpi">
+            <div class="tf-kpi-head">
+                <span class="tf-kpi-icon tf-kpi-icon-primary">
+                    <i class="bi bi-building"></i>
+                </span>
+                <span class="tf-kpi-label">Obras activas recientes</span>
             </div>
-            <hr>
-            <div id="sideBarItem" class="mb-auto overflow-auto page-content">
-                <ul class="nav nav-pills flex-column f-5" id="v-pills-tab" role="tablist" aria-orientation="vertical">
-                    <li v-if="this.users[0].user_directionAcess == 1">
-                        <a href="#" class="nav-link text-white" id="v-pills-reports-tab" data-bs-toggle="pill" data-bs-target="#v-pills-reports" type="button" role="tab" aria-controls="v-pills-reports" aria-selected="false" @click="irDireecion">
-                            <img class="me-2" src="../images/icons/ceo.svg" alt="user-icon" height="24" width="24">
-                            DIRECCION
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="nav-link text-white" aria-current="page" id="v-pills-obras-tab" data-bs-toggle="pill" data-bs-target="#v-pills-obras" type="button" role="tab" aria-controls="v-pills-obras" aria-selected="true">
-                            <img class="me-2" src="../images/icons/obras.svg" alt="user-icon" height="24" width="24">
-                            OBRAS
-                        </a>
-                        <div class="tab-content" id="v-pills-tabContent">
-                            <ul class="tab-pane fade nav nav-pills flex-column mb-auto" id="v-pills-obras" role="tabpanel" aria-labelledby="v-pills-obras-tab">
-                                <li v-for="obra in this.obras">
-                                    <a style="cursor: pointer" class="nav-link text-white ms-4" aria-current="page" @click="irObra(obra.obras_id)">{{obra.obras_nombre}}</a>
-                                </li>
-                            </ul>
+            <div class="tf-kpi-value" v-cloak>{{ obras.length }}</div>
+            <div class="tf-kpi-foot">
+                <span>Mostrando las 12 mas recientes</span>
+            </div>
+        </article>
+
+        <article class="tf-kpi">
+            <div class="tf-kpi-head">
+                <span class="tf-kpi-icon tf-kpi-icon-success">
+                    <i class="bi bi-collection"></i>
+                </span>
+                <span class="tf-kpi-label">Catalogos</span>
+            </div>
+            <div class="tf-kpi-value" style="font-size:1.35rem">Proveedores y Bancos</div>
+            <div class="tf-kpi-foot">
+                <a href="./menu_catalago.php" @click.prevent="irMenuCatalago" class="tf-btn tf-btn-ghost tf-btn-sm">
+                    Abrir <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="tf-kpi" v-if="users.length && users[0].user_directionAcess == 1" v-cloak>
+            <div class="tf-kpi-head">
+                <span class="tf-kpi-icon tf-kpi-icon-warning">
+                    <i class="bi bi-briefcase-fill"></i>
+                </span>
+                <span class="tf-kpi-label">Direccion</span>
+            </div>
+            <div class="tf-kpi-value" style="font-size:1.35rem">Presiones pendientes</div>
+            <div class="tf-kpi-foot">
+                <a href="./direccion.php" @click.prevent="irDireecion" class="tf-btn tf-btn-ghost tf-btn-sm">
+                    Autorizar <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="tf-kpi">
+            <div class="tf-kpi-head">
+                <span class="tf-kpi-icon tf-kpi-icon-danger">
+                    <i class="bi bi-receipt"></i>
+                </span>
+                <span class="tf-kpi-label">Requisiciones</span>
+            </div>
+            <div class="tf-kpi-value" style="font-size:1.35rem">Modulo</div>
+            <div class="tf-kpi-foot">
+                <a href="./requisiciones.php" class="tf-btn tf-btn-ghost tf-btn-sm">
+                    Ver todas <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </article>
+    </section>
+
+    <!-- ============================================================
+         Lista de obras + acciones rapidas
+         ============================================================ -->
+    <div class="tf-grid-2">
+        <!-- Obras -->
+        <section class="tf-card">
+            <header class="tf-card-header">
+                <div>
+                    <h2 class="tf-card-title">
+                        <i class="bi bi-buildings"></i> Obras activas recientes
+                    </h2>
+                    <p class="tf-card-sub" v-cloak>{{ obras.length }} obras encontradas</p>
+                </div>
+                <a href="#" class="tf-btn tf-btn-ghost tf-btn-sm">
+                    Ver todas <i class="bi bi-arrow-right"></i>
+                </a>
+            </header>
+
+            <div class="tf-card-body p-0">
+                <div v-if="!obras.length" class="tf-empty" v-cloak>
+                    <i class="bi bi-inbox"></i>
+                    <p>No hay obras registradas para mostrar.</p>
+                </div>
+
+                <ul class="tf-list" v-cloak>
+                    <li v-for="obra in obras" :key="obra.obras_id" class="tf-obra-row">
+                        <div class="tf-obra-row-main">
+                            <span class="tf-obra-row-icon">
+                                <i class="bi bi-building"></i>
+                            </span>
+                            <div class="tf-obra-row-text">
+                                <strong>{{ obra.obras_nombre }}</strong>
+                                <small>Obra activa</small>
+                            </div>
                         </div>
-                    </li>
-                    <li>
-                        <a href="#" class="nav-link text-white" aria-current="page" id="v-pills-catalago-tab" data-bs-toggle="pill" data-bs-target="#v-pills-catalago" type="button" role="tab" aria-controls="v-pills-catalago" aria-selected="false" @click="irMenuCatalago">
-                            <img class="me-2" src="../images/icons/catalagos.svg" alt="user-icon" height="24" width="24">
-                            CATALAGOS
-                        </a>
+                        <button type="button"
+                                class="tf-btn tf-btn-primary tf-btn-sm"
+                                @click="irObra(obra.obras_id)">
+                            <i class="bi bi-box-arrow-up-right"></i> Abrir
+                        </button>
                     </li>
                 </ul>
             </div>
-            <hr>
-            <div class="dropdown">
-                <a href="./closeSesion.php" class="d-flex align-items-center text-white text-decoration-none f-5" aria-expanded="false">
-                    <img class="me-2" src="../images/icons/logout.svg" alt="user-icon" height="24" width="24">
-                    <span>CERRAR SESION</span>
-                </a>
-            </div>
-        </div>
-        <div class="d-flex flex-column flex-shrink-0 h-100 position-fixed top-0 end-0 app-main">
-            <!--Navbar-->
-            <nav class="navbar app-navbar">
-                <div class="container-fluid">
-                    <span class="navbar-brand text-light text-center w-100 fw-bolder">The Fuentes Corporation Workspace</span>
-                </div>
-            </nav>
-            <nav class="nav shadow-sm d-flex align-items-center" id="navtab" aria-label="breadcrumb" aria-current="page">
-                <ol class="breadcrumb py-2 px-3 my-0">
-                    <li class="breadcrumb-item active d-flex align-items-center">
-                        <img class="" src="../images/icons/home.svg" alt="user-icon" height="24" width="24">
-                        <span>Inicio</span>
-                    </li>
-                </ol>
-            </nav>
-            <div class="container page-shell">
+        </section>
 
-                <!-- Page header -->
-                <div class="page-hdr">
-                    <div class="page-hdr-left">
-                        <h2 class="page-title">Bienvenido, {{NameUser}}</h2>
-                        <p class="page-lead">Resumen del espacio de trabajo. Selecciona una obra o modulo para comenzar.</p>
+        <!-- Panel lateral: acciones rapidas + actividad -->
+        <aside class="tf-side-col">
+            <section class="tf-card">
+                <header class="tf-card-header">
+                    <h2 class="tf-card-title">
+                        <i class="bi bi-lightning-charge-fill"></i> Acciones rapidas
+                    </h2>
+                </header>
+                <div class="tf-card-body">
+                    <div class="tf-quick-grid">
+                        <a href="./nueva_requisicion.php" class="tf-quick-btn">
+                            <i class="bi bi-file-earmark-plus"></i>
+                            <span>Nueva requisicion</span>
+                        </a>
+                        <a href="./menu_catalago.php" class="tf-quick-btn" @click.prevent="irMenuCatalago">
+                            <i class="bi bi-collection"></i>
+                            <span>Catalogos</span>
+                        </a>
+                        <a href="./presiones.php" class="tf-quick-btn">
+                            <i class="bi bi-cash-coin"></i>
+                            <span>Presiones</span>
+                        </a>
+                        <?php if ($tf_show_direccion): ?>
+                        <a href="./direccion.php" class="tf-quick-btn" @click.prevent="irDireecion">
+                            <i class="bi bi-briefcase-fill"></i>
+                            <span>Direccion</span>
+                        </a>
+                        <?php endif; ?>
                     </div>
                 </div>
+            </section>
 
-                <!-- Stat row -->
-                <div class="stat-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <img src="../images/icons/obras.svg" alt="obras">
-                        </div>
-                        <p class="stat-label">Obras activas recientes</p>
-                        <p class="stat-value">{{obras.length}}</p>
-                        <p class="stat-sub">Mostrando las 12 mas recientes</p>
-                    </div>
-                    <a class="stat-card green" href="./menu_catalago.php" @click.prevent="irMenuCatalago">
-                        <div class="stat-icon">
-                            <img src="../images/icons/catalagos.svg" alt="catalogos">
-                        </div>
-                        <p class="stat-label">Catalogos</p>
-                        <p class="stat-value" style="font-size:1.1rem;letter-spacing:-.02em">Proveedores y Bancos</p>
-                        <p class="stat-sub">Administrar catalogos del sistema</p>
-                    </a>
-                    <a class="stat-card yellow" href="./direccion.php" @click.prevent="irDireecion" v-if="this.users.length && this.users[0].user_directionAcess == 1">
-                        <div class="stat-icon">
-                            <img src="../images/icons/ceo.svg" alt="direccion">
-                        </div>
-                        <p class="stat-label">Direccion</p>
-                        <p class="stat-value" style="font-size:1.1rem;letter-spacing:-.02em">Presiones Pendientes</p>
-                        <p class="stat-sub">Autorizar y gestionar presiones</p>
-                    </a>
+            <section class="tf-card">
+                <header class="tf-card-header">
+                    <h2 class="tf-card-title">
+                        <i class="bi bi-clock-history"></i> Actividad reciente
+                    </h2>
+                </header>
+                <div class="tf-card-body">
+                    <ul class="tf-timeline">
+                        <li>
+                            <span class="tf-timeline-dot tf-timeline-dot-primary"></span>
+                            <div>
+                                <strong>Bienvenido al nuevo workspace</strong>
+                                <small>Diseno renovado v4.1 con soporte mobile</small>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="tf-timeline-dot tf-timeline-dot-success"></span>
+                            <div>
+                                <strong>Sistema actualizado</strong>
+                                <small>Bootstrap 5.3.3 + Bootstrap Icons</small>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="tf-timeline-dot tf-timeline-dot-warning"></span>
+                            <div>
+                                <strong>Roles y permisos</strong>
+                                <small>Proximamente: control granular por rol</small>
+                            </div>
+                        </li>
+                    </ul>
                 </div>
-
-                <!-- Obras list -->
-                <div class="table-wrapper" v-if="obras.length">
-                    <div style="padding:14px 18px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-                        <span style="font-size:.875rem;font-weight:600;color:var(--text-primary)">Obras activas recientes</span>
-                        <span style="font-size:.78rem;color:var(--text-secondary)">{{obras.length}} total</span>
-                    </div>
-                    <table style="width:100%;border-collapse:collapse">
-                        <thead>
-                            <tr>
-                                <th style="background:var(--slate-50);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);padding:10px 18px;border-bottom:1px solid var(--border)">Nombre de la Obra</th>
-                                <th style="background:var(--slate-50);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);padding:10px 18px;border-bottom:1px solid var(--border);text-align:right">Accion</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="obra in obras" style="border-bottom:1px solid rgba(226,232,240,.65)">
-                                <td style="padding:12px 18px;font-size:.9rem;font-weight:500;color:var(--text-primary)">{{obra.obras_nombre}}</td>
-                                <td style="padding:12px 18px;text-align:right">
-                                    <button type="button" class="btn btn-primary" style="padding:.38rem .8rem;font-size:.82rem" @click="irObra(obra.obras_id)">
-                                        Abrir obra
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-            </div>
-        </div>
+            </section>
+        </aside>
     </div>
-    <!--scripts de bootstrap, poppers y jquery-->
-    <script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.js"></script>
-    <script src="../assets/lib/bootstrap/js/bootstrap.min.js"></script>
 
-    <!-- scripts de vue.js-->
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+</div>
 
-    <!--Script de axios-->
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<?php
+// JS inline: carga datos via Vue 2, expone al layout
+$tf_inline_script = <<<JS
+    // ID del usuario: prioriza session (TF_CONTEXT) sobre localStorage legacy
+    var __tf_user_id = (window.TF_CONTEXT && window.TF_CONTEXT.user && window.TF_CONTEXT.user.id)
+        || localStorage.getItem("NameUser");
 
-    <!--scripts de sweetalert-->
-    <script src="../assets/lib/sweetalert/sweetalert2.min.js"></script>
+    var url  = "../api/crud_index.php";
+    var url2 = ".";
 
-    <!--esta es la llamada cdn de datatable-->
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
+    new Vue({
+        el: "#AppIndex",
+        data: {
+            users: [],
+            obras: [],
+            NameUser: (window.TF_CONTEXT && window.TF_CONTEXT.user && window.TF_CONTEXT.user.name) || ""
+        },
+        methods: {
+            consultarUsuario: function (user_id) {
+                if (!user_id) return;
+                axios.post(url, { accion: 1, id_user: user_id }).then(function (response) {
+                    this.users = response.data || [];
+                    if (this.users[0] && this.users[0].user_name) {
+                        this.NameUser = this.users[0].user_name;
+                    }
+                }.bind(this)).catch(function () {
+                    console.warn("No se pudo consultar el usuario");
+                });
+            },
+            listarObras: function () {
+                axios.post(url, { accion: 2, modo: "recientes", limite: 12 }).then(function (response) {
+                    this.obras = response.data || [];
+                }.bind(this)).catch(function () {
+                    console.warn("No se pudo listar obras");
+                });
+            },
+            irObra: function (idObra) {
+                try { localStorage.setItem("obraActiva", idObra); } catch (e) {}
+                window.location.href = url2 + "/obras.php";
+            },
+            irDireecion: function () {
+                window.location.href = url2 + "/direccion.php";
+            },
+            irMenuCatalago: function () {
+                window.location.href = url2 + "/menu_catalago.php";
+            }
+        },
+        created: function () {
+            this.listarObras();
+            this.consultarUsuario(__tf_user_id);
+        }
+    });
+JS;
 
-    <!-- scripts constume-->
-    <script src="../assets/js/index.js"></script>
-    <script src="../assets/js/layout_sidebar.js"></script>
-</body>
-
-</html>
-
-
+include __DIR__ . '/../includes/layout_bottom.php';
+?>

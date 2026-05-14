@@ -7,7 +7,8 @@ const appLogin = new Vue({
         User: "",
         Password: "",
         Credenciales: [],
-        isLoading: false
+        isLoading: false,
+        showPwd: false
     },
     methods: {
         EntarLogin: async function (User, Password) {
@@ -108,3 +109,6 @@ const appLogin = new Vue({
     created: function () { },
     computed: {}
 });
+
+// Exponer la instancia globalmente para el patch en pages/login.php
+try { window.appLogin = appLogin; } catch (e) { /* silencioso */ }
