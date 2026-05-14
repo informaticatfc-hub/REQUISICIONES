@@ -25,10 +25,163 @@ include_once '../validarSesion.php';
     <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css">
     <!--llamar a mi documento de CSS-->
     <link rel="stylesheet" href="../assets/css/main.css">
+    <style>
+        .director-top-layout .app-sidebar { display: none !important; }
+        .director-top-layout .app-main { left: 0 !important; }
+        .director-top-layout .director-shortcuts {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 24px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: calc(var(--topbar-h) + 42px);
+            z-index: 89;
+        }
+        .director-top-layout .director-shortcuts .btn {
+            min-height: 34px;
+            font-size: 0.8rem;
+            padding: 0.35rem 0.8rem;
+        }
+        .formula-bar {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        .formula-cell { min-width: 220px; }
+        .formula-help { font-size: 0.75rem; color: #475569; }
+        .totals-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .totals-mini-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        .totals-mini-card .lbl {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #475569;
+        }
+        .totals-mini-card .val {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .excel-toolbar {
+            display: grid;
+            grid-template-columns: 170px 1fr auto;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .excel-name-box {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #334155;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 8px 10px;
+            text-align: center;
+        }
+        .excel-formula-input {
+            min-height: 36px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+        }
+        .excel-table-wrap {
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            background: #fff;
+            overflow: auto;
+        }
+        .excel-grid {
+            border-collapse: collapse !important;
+            min-width: 1300px;
+            background: #fff;
+        }
+        .excel-grid thead th {
+            position: sticky;
+            top: 0;
+            background: #eef2ff !important;
+            color: #1e293b !important;
+            border: 1px solid #cbd5e1 !important;
+            font-size: 0.75rem;
+        }
+        .excel-grid tbody td {
+            border: 1px solid #e2e8f0 !important;
+            background: #fff !important;
+            padding: 6px 8px !important;
+            vertical-align: middle;
+        }
+        .excel-grid tbody tr:hover td {
+            background: #f8fafc !important;
+        }
+        .excel-cell-input {
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: #fff;
+            min-height: 32px;
+            width: 100%;
+            padding: 4px 6px;
+            font-size: 0.84rem;
+        }
+        .excel-cell-input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+        }
+        .excel-cell-textarea {
+            min-height: 56px;
+            resize: vertical;
+        }
+        .excel-utility-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .excel-utility-bar .form-control {
+            max-width: 260px;
+            min-height: 34px;
+        }
+        .excel-utility-bar .form-check {
+            margin-left: 6px;
+            margin-right: 4px;
+        }
+        .excel-grid tbody tr.row-dirty td {
+            background: #fff7ed !important;
+        }
+        .excel-grid tbody tr.row-dirty:hover td {
+            background: #ffedd5 !important;
+        }
+        .chip-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            padding: 0 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: #1d4ed8;
+            color: #fff;
+        }
+    </style>
     <title>Presiones de Todas las Obras</title>
 </head>
 
-<body class="app-layout">
+<body class="app-layout director-top-layout">
     <div id="AppIndex">
         <!--sidebar-->
         <div class="d-flex flex-column flex-shrink-0 p-3 text-white position-fixed top-0 start-0 h-100 app-sidebar" id="sidebar">
@@ -99,29 +252,21 @@ include_once '../validarSesion.php';
                     <li class="breadcrumb-item active" aria-current="page"><span>Presiones de todas la Obras</span></li>
                 </ol>
             </nav>
+            <div class="director-shortcuts">
+                <button type="button" class="btn btn-secondary" @click="window.location.href='./direccion.php'">Menu Direccion</button>
+                <button type="button" class="btn btn-secondary" @click="window.location.href='./menu_catalago.php'">Catalogos</button>
+                <button type="button" class="btn btn-secondary" @click="window.location.href='./index.php'">Inicio</button>
+                <button type="button" class="btn btn-danger ms-auto" @click="window.location.href='./closeSesion.php'">Cerrar Sesion</button>
+            </div>
             <div class="container page-shell overflow-auto page-content">
                 <div class="page-hdr">
                     <div class="page-hdr-left">
                         <h2 class="page-title">Presiones Pendientes &mdash; Todas las Obras</h2>
-                        <p class="page-lead">Presiones pendientes de autorizacion y pago en todas las obras activas. Ingresa el monto autorizado y guarda los cambios.</p>
+                        <p class="page-lead">Presiones pendientes de autorizacion y pago en todas las obras activas. Ahora puedes usar formulas tipo Excel para calcular montos autorizados por fila o por obra completa.</p>
                         <div class="obras-chip mt-2">
                             <span class="obras-chip-dot"></span>
                             Vista de Direccion
                         </div>
-                    </div>
-                </div>
-                <div class="ops-hero-grid">
-                    <div class="quick-tile">
-                        <span class="quick-tile-label">Total Obras</span>
-                        <span class="quick-tile-value">{{presiones.length}}</span>
-                    </div>
-                    <div class="quick-tile">
-                        <span class="quick-tile-label">Total Presiones</span>
-                        <span class="quick-tile-value">{{presiones.reduce(function(s,o){return s + o.Presion_Obra.length}, 0)}}</span>
-                    </div>
-                    <div class="quick-tile">
-                        <span class="quick-tile-label">Pendientes de Pago</span>
-                        <span class="quick-tile-value">{{presiones.reduce(function(s,o){return s + o.Presion_Obra.length}, 0)}}</span>
                     </div>
                 </div>
                 <div class="row mb-5">
@@ -134,16 +279,66 @@ include_once '../validarSesion.php';
                             </h2>
                             <div v-bind:id="'collapse'+ quitarEspacios(obra.Nombre_Obra)" class="'accordion-collapse collapse ' + obra.colapse_show" data-bs-parent="#accordionExample">
                                 <div class="accordion-body">
-                                    <div class="row">
-                                        <div class="col d-flex align-items-end mb-3">
-                                            <button type="button" class="btn btn-success ms-auto">
-                                                <span class="fw-bold text-white" @click="consultarTotales(obra.total_Glabal, obra.total_Global_Aut, obra.total_Efectivo, obra.total_Efectivo_Aut, obra.total_Transferencia, obra.total_Transferencia_Aut, obra.total_Global_Rechazado, obra.total_Efectivo_Rechazado, obra.total_Transferencia_Rechazado, obra.Nombre_Obra)">Consultar Totales</span>
+                                    <div class="row g-2 align-items-end mb-3">
+                                        <div class="col-lg-7">
+                                            <div class="formula-bar">
+                                                <div class="row g-2 align-items-end">
+                                                    <div class="col-lg-8">
+                                                        <label class="form-label mb-1">Formula global (tipo Excel)</label>
+                                                        <input type="text" class="form-control" placeholder="Ejemplo: =IF(ADEUDO>5000,ADEUDO*0.9,ADEUDO)" v-model="obra.formulaGlobal">
+                                                        <div class="formula-help mt-1">Variables: <strong>ADEUDO</strong>/<strong>TOTAL</strong>, <strong>AUT</strong>. Funciones: <strong>MIN()</strong>, <strong>MAX()</strong>, <strong>AVG()</strong>, <strong>SUM()</strong>, <strong>ROUND(valor,decimales)</strong>, <strong>IF(condicion,si,siNo)</strong>.</div>
+                                                    </div>
+                                                    <div class="col-lg-4 d-flex gap-2">
+                                                        <button type="button" class="btn btn-primary w-100" @click="aplicarFormulaGlobal(index)">Aplicar Formula</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-5 d-flex gap-2 justify-content-lg-end">
+                                            <span class="chip-count" title="Filas editadas">{{(obra.Presion_Obra || []).filter(function(row){ return !!row._dirty; }).length}}</span>
+                                            <button type="button" class="btn btn-success" @click="consultarTotales(obra.total_Glabal, obra.total_Global_Aut, obra.total_Efectivo, obra.total_Efectivo_Aut, obra.total_Transferencia, obra.total_Transferencia_Aut, obra.total_Global_Rechazado, obra.total_Efectivo_Rechazado, obra.total_Transferencia_Rechazado, obra.Nombre_Obra)">
+                                                Consultar Totales
                                             </button>
+                                            <button type="button" class="btn btn-secondary" @click="mostrarAyudaRapida()">Ayuda</button>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="totals-mini-grid">
+                                                <div class="totals-mini-card">
+                                                    <div class="lbl">Total Propuesto</div>
+                                                    <div class="val">{{formatearMoneda(totalPropuestoObra(obra))}}</div>
+                                                </div>
+                                                <div class="totals-mini-card">
+                                                    <div class="lbl">Total Autorizado</div>
+                                                    <div class="val">{{formatearMoneda(totalAutorizadoObra(obra))}}</div>
+                                                </div>
+                                                <div class="totals-mini-card">
+                                                    <div class="lbl">Diferencia</div>
+                                                    <div class="val">{{formatearMoneda(totalAutorizadoObra(obra) - totalPropuestoObra(obra))}}</div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="row">
                                         <div class="col table-responsive">
-                                            <table id="example" class="table table-prof align-middle table-hover w-100">
+                                            <div class="excel-utility-bar">
+                                                <input type="text" class="form-control" placeholder="Filtrar por clave, proveedor, concepto..." v-model="obra.filtro">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" :id="'soloEditados'+index" v-model="obra.soloEditados">
+                                                    <label class="form-check-label" :for="'soloEditados'+index">Solo editados</label>
+                                                </div>
+                                                <button class="btn btn-success" type="button" @click="autorizarTodoObra(index)">Autorizar 100%</button>
+                                                <button class="btn btn-warning" type="button" @click="aplicarDescuentoObra(index)">-10% masivo</button>
+                                                <button class="btn btn-danger" type="button" @click="rechazarTodoObra(index)">Rechazar todo</button>
+                                                <button class="btn btn-secondary" type="button" @click="restaurarCambiosObra(index)">Restaurar</button>
+                                                <button class="btn btn-secondary" type="button" @click="exportarCsvObra(index)">Exportar CSV</button>
+                                            </div>
+                                            <div class="excel-toolbar">
+                                                <div class="excel-name-box">{{selectedCellLabel || 'Sin celda seleccionada'}}</div>
+                                                <input type="text" class="form-control excel-formula-input" placeholder="Barra de formula: =SUM(ADEUDO,100), =IF(AUT>ADEUDO,ADEUDO,AUT)" v-model="formulaBar" @keyup.enter="aplicarFormulaBarra(index)">
+                                                <button class="btn btn-primary" type="button" @click="aplicarFormulaBarra(index)">Aplicar</button>
+                                            </div>
+                                            <div class="excel-table-wrap">
+                                            <table id="example" class="table table-prof excel-grid align-middle w-100">
                                                 <thead class="table-dark">
                                                     <tr>
                                                         <th scope="col" class="fs-6">CLAVE</th>
@@ -152,27 +347,35 @@ include_once '../validarSesion.php';
                                                         <th scope="col" class="fs-6">CONCEPTO</th>
                                                         <th scope="col" class="fs-6">ADEUDO</th>
                                                         <th scope="col" class="fs-6">PAGO AUTORIZADO</th>
+                                                        <th scope="col" class="fs-6">FORMULA</th>
                                                         <th scope="col" class="fs-6">OBSERVACIONES</th>
                                                         <th scope="col" class="fs-6">FORMA DE PAGO</th>                                                    
                                                     </tr>
                                                 </thead>
                                                 <tbody class="table-light" id="Tabla_Items">
-                                                    <tr class="my-3" v-for="(presionObra,indice) of obra.Presion_Obra">
+                                                    <tr class="my-3" v-for="(presionObra,indice) of obra.Presion_Obra" v-show="filaVisible(obra,presionObra)" :class="{'row-dirty': presionObra._dirty}">
                                                         <td>{{presionObra.clave}}</td>
                                                         <td class="fs-6">{{presionObra.NumReq}}</td>
                                                         <td class="fs-6">{{presionObra.proveedor}}</td>
                                                         <td class="fs-6">{{presionObra.concepto}}</td>
                                                         <td class="fs-6">{{formatearMoneda(presionObra.total)}}</td>
                                                         <td class="fs-6" style="width: 200px;">
-                                                            <div class="input-group mb-3">                                                                
+                                                            <div class="input-group mb-3">
                                                                 <span class="input-group-text" id="dollar-sing">$</span>
-                                                                <input type="text" class="form-control" id="adeudoInput" aria-describedby="adeudo" v-model="presionObra.adeudo">
+                                                                <input type="text" class="form-control excel-cell-input" aria-describedby="adeudo" v-model="presionObra.adeudo" @focus="selectCell(index,indice,'AUT')" @input="onRowInput(index,indice,presionObra)" @blur="normalizarAdeudo(index,indice)" @paste="pegarRangoAdeudo($event,index,indice)" @keydown="onCellKeydown($event,index,indice)">
                                                                 <button class="btn btn-secondary" type="button" @click="openWinPorcentaje(index,indice)" id="button-addon1">%</button>
                                                             </div>
                                                         </td>
+                                                        <td class="formula-cell">
+                                                            <div class="input-group mb-2">
+                                                                <span class="input-group-text">fx</span>
+                                                                <input type="text" class="form-control excel-cell-input" placeholder="=MIN(ADEUDO,5000)" v-model="presionObra.formula" @focus="selectCell(index,indice,'FX')" @input="onRowInput(index,indice,presionObra)" @keyup.enter="aplicarFormulaFila(index,indice)">
+                                                            </div>
+                                                            <button class="btn btn-sm btn-primary" type="button" @click="aplicarFormulaFila(index,indice)">Aplicar</button>
+                                                        </td>
                                                         <td :class="presionObra.atrClass" :style="presionObra.strStyle">
                                                             <div>
-                                                                <textarea v-model="presionObra.Observaciones" class="form-control" id="adeudoInput" placeholder="Escribe tu Comentario aquí"></textarea>
+                                                                <textarea v-model="presionObra.Observaciones" class="form-control excel-cell-input excel-cell-textarea" placeholder="Escribe tu Comentario aquí" @input="onRowInput(index,indice,presionObra)"></textarea>
                                                             </div>
                                                         </td>
                                                         <td>{{presionObra.formaPago}}</td>                
@@ -181,6 +384,7 @@ include_once '../validarSesion.php';
                                                 <tfoot class="table-dark">
                                                 </tfoot>
                                             </table>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="row">
@@ -216,8 +420,8 @@ include_once '../validarSesion.php';
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
 
     <!-- scripts constume-->
-    <script src="../assets/js/all_presiones.js"></script>
-    <script src="../assets/js/layout_sidebar.js"></script>
+    <script src="../assets/js/all_presiones.js?v=fase07b"></script>
+    <script src="../assets/js/layout_sidebar.js?v=fase07b"></script>
 </body>
 
 </html>

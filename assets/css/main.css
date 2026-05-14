@@ -100,6 +100,13 @@ img{max-width:100%;display:block}
 /* MAIN — positioned with left/right so Bootstrap's end-0 doesn't conflict */
 .app-main{position:fixed!important;top:0!important;left:var(--sidebar-w)!important;right:0!important;bottom:0!important;width:auto!important;margin-left:0!important;display:flex;flex-direction:column;background:var(--bg);overflow-y:auto;overflow-x:hidden;transition:left .22s ease}
 
+/* Fase directivo v2: sin barra lateral en ninguna vista legacy */
+.app-sidebar{display:none!important}
+.app-main{left:0!important}
+.sidebar-backdrop{display:none!important}
+body.sidebar-collapsed .app-main{left:0!important}
+body.sidebar-collapsed .app-sidebar{display:none!important}
+
 .sidebar-toggle-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 12px;border:1px solid rgba(255,255,255,.26);border-radius:999px;background:rgba(255,255,255,.08);color:#fff;font-size:.76rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:background .16s,border-color .16s,transform .1s;margin-right:12px}
 .sidebar-toggle-btn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.44)}
 .sidebar-toggle-btn:active{transform:translateY(1px)}
@@ -268,8 +275,8 @@ a.stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-
 .obras-chip-dot{width:8px;height:8px;border-radius:50%;background:var(--blue-500)}
 
 /* OPS PAGES */
-.ops-hero-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}
-.ops-hero-grid .quick-tile{min-height:110px}
+.ops-hero-grid{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+.ops-hero-grid .quick-tile{min-height:100px}
 .ops-hero-grid .quick-tile-value{font-size:clamp(1.25rem,2.3vw,1.8rem)}
 
 /* ACCORDION */
@@ -347,6 +354,9 @@ body.login-page{min-height:100vh;margin:0;padding:0!important;background:var(--s
     .sidebar-toggle-label{display:none}
     .sidebar-toggle-btn{min-width:38px;padding:0 10px;margin-right:8px}
     .obras-hero-grid{grid-template-columns:1fr}
+    .ops-hero-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:575px){
     .ops-hero-grid{grid-template-columns:1fr}
 }
 @media(max-width:479px){

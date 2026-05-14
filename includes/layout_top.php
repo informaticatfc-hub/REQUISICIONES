@@ -34,6 +34,8 @@ $tf_user           = $tf_user           ?? ['name' => '', 'role' => '', 'initial
 $tf_show_direccion = $tf_show_direccion ?? false;
 $tf_show_admin     = $tf_show_admin     ?? false;
 $tf_show_subbar    = $tf_show_subbar    ?? true;
+$tf_role_code      = strtolower((string)($tf_user['roleCode'] ?? ''));
+$tf_is_director    = $tf_role_code === 'director';
 
 // Sanitiza iniciales
 if (empty($tf_user['initials']) && !empty($tf_user['name'])) {
@@ -102,6 +104,7 @@ function tf_active($current, $key) {
                     <i class="bi bi-grid-1x2-fill"></i> Inicio
                 </a>
 
+                <?php if (!$tf_is_director): ?>
                 <div class="dropdown">
                     <button type="button"
                             class="tf-nav-trigger <?= tf_active($tf_active_nav, 'obras') ?>"
@@ -123,16 +126,21 @@ function tf_active($current, $key) {
                         </div>
                     </div>
                 </div>
+                <?php endif; ?>
 
+                <?php if (!$tf_is_director): ?>
                 <a href="./requisiciones.php"
                    class="<?= tf_active($tf_active_nav, 'requisiciones') ?>">
                     <i class="bi bi-receipt"></i> Requisiciones
                 </a>
+                <?php endif; ?>
+
                 <a href="./presiones.php"
                    class="<?= tf_active($tf_active_nav, 'presiones') ?>">
                     <i class="bi bi-cash-coin"></i> Presiones
                 </a>
 
+                <?php if (!$tf_is_director): ?>
                 <div class="dropdown">
                     <button type="button"
                             class="tf-nav-trigger <?= tf_active($tf_active_nav, 'catalogos') ?>"
@@ -150,6 +158,7 @@ function tf_active($current, $key) {
                         </a>
                     </div>
                 </div>
+                <?php endif; ?>
 
                 <?php if ($tf_show_direccion): ?>
                 <a href="./direccion.php"
@@ -260,16 +269,19 @@ function tf_active($current, $key) {
             <a href="./index.php" class="tf-mobile-nav-item <?= tf_active($tf_active_nav, 'inicio') ?>">
                 <i class="bi bi-grid-1x2-fill"></i> Inicio
             </a>
+            <?php if (!$tf_is_director): ?>
             <a href="#" class="tf-mobile-nav-item <?= tf_active($tf_active_nav, 'obras') ?>">
                 <i class="bi bi-building"></i> Obras
             </a>
             <a href="./requisiciones.php" class="tf-mobile-nav-item <?= tf_active($tf_active_nav, 'requisiciones') ?>">
                 <i class="bi bi-receipt"></i> Requisiciones
             </a>
+            <?php endif; ?>
             <a href="./presiones.php" class="tf-mobile-nav-item <?= tf_active($tf_active_nav, 'presiones') ?>">
                 <i class="bi bi-cash-coin"></i> Presiones
             </a>
 
+            <?php if (!$tf_is_director): ?>
             <div class="tf-mobile-nav-section">Catalogos</div>
             <a href="./proveedores.php" class="tf-mobile-nav-item">
                 <i class="bi bi-truck"></i> Proveedores
@@ -277,6 +289,7 @@ function tf_active($current, $key) {
             <a href="./bancos.php" class="tf-mobile-nav-item">
                 <i class="bi bi-bank"></i> Bancos
             </a>
+            <?php endif; ?>
 
             <?php if ($tf_show_direccion || $tf_show_admin): ?>
             <div class="tf-mobile-nav-section">Administracion</div>

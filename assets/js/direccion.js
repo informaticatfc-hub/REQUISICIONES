@@ -43,6 +43,10 @@ const appRequesition = new Vue({
         {
             window.location.href = url2 + "/all_presiones.php";
         },
+        enterReportesKpi: function()
+        {
+            window.location.href = url2 + "/reportes_kpi.php";
+        },
         irDireecion: function(){
             window.location.href = url2 + "/direccion.php";
         },

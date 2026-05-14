@@ -34,6 +34,7 @@ $tf_show_direccion = in_array($usuario_rolCode, ['admin', 'director'], true) || 
 $tf_show_admin     = $usuario_rolCode === 'admin';
 $tf_show_subbar    = true;
 $tf_user_id_js     = (string)$usuario_sesion;
+$tf_es_director    = ($usuario_rolCode === 'director') || ($usuario_dirAcc === 1);
 
 // Acciones rapidas en la sub-bar
 $tf_subbar_extra = '
@@ -59,21 +60,75 @@ include __DIR__ . '/../includes/layout_top.php';
         <div>
             <span class="tf-eyebrow">Panel principal</span>
             <h1 class="tf-page-title">Bienvenido, <span v-cloak>{{ NameUser || '<?= htmlspecialchars($usuario_nombre) ?>' }}</span></h1>
+            <?php if ($tf_es_director): ?>
+            <p class="tf-page-lead">
+                Centro directivo para autorizacion, cierre de presiones y reportes KPI.
+            </p>
+            <?php else: ?>
             <p class="tf-page-lead">
                 Resumen del espacio de trabajo. Selecciona una obra o modulo para comenzar.
             </p>
+            <?php endif; ?>
         </div>
+        <?php if (!$tf_es_director): ?>
         <div class="tf-page-header-actions">
             <a href="./nueva_requisicion.php" class="tf-btn tf-btn-primary">
                 <i class="bi bi-file-earmark-plus"></i> Nueva requisicion
             </a>
         </div>
+        <?php endif; ?>
     </header>
 
     <!-- ============================================================
          KPI grid
          ============================================================ -->
     <section class="tf-kpi-grid" aria-label="Resumen rapido">
+        <?php if ($tf_es_director): ?>
+        <article class="tf-kpi">
+            <div class="tf-kpi-head">
+                <span class="tf-kpi-icon tf-kpi-icon-warning">
+                    <i class="bi bi-briefcase-fill"></i>
+                </span>
+                <span class="tf-kpi-label">Autorizacion</span>
+            </div>
+            <div class="tf-kpi-value" style="font-size:1.35rem">Todas las presiones</div>
+            <div class="tf-kpi-foot">
+                <a href="./all_presiones.php" class="tf-btn tf-btn-ghost tf-btn-sm">
+                    Abrir <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="tf-kpi">
+            <div class="tf-kpi-head">
+                <span class="tf-kpi-icon tf-kpi-icon-danger">
+                    <i class="bi bi-cash-coin"></i>
+                </span>
+                <span class="tf-kpi-label">Cierre de presiones</span>
+            </div>
+            <div class="tf-kpi-value" style="font-size:1.35rem">Presiones</div>
+            <div class="tf-kpi-foot">
+                <a href="./presiones.php" class="tf-btn tf-btn-ghost tf-btn-sm">
+                    Abrir <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </article>
+
+        <article class="tf-kpi">
+            <div class="tf-kpi-head">
+                <span class="tf-kpi-icon tf-kpi-icon-primary">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </span>
+                <span class="tf-kpi-label">Reportes KPI</span>
+            </div>
+            <div class="tf-kpi-value" style="font-size:1.35rem">Gastos por fecha</div>
+            <div class="tf-kpi-foot">
+                <a href="./reportes_kpi.php" class="tf-btn tf-btn-ghost tf-btn-sm">
+                    Abrir <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </article>
+        <?php else: ?>
         <article class="tf-kpi">
             <div class="tf-kpi-head">
                 <span class="tf-kpi-icon tf-kpi-icon-primary">
@@ -131,6 +186,7 @@ include __DIR__ . '/../includes/layout_top.php';
                 </a>
             </div>
         </article>
+        <?php endif; ?>
     </section>
 
     <!-- ============================================================
@@ -188,6 +244,20 @@ include __DIR__ . '/../includes/layout_top.php';
                 </header>
                 <div class="tf-card-body">
                     <div class="tf-quick-grid">
+                        <?php if ($tf_es_director): ?>
+                        <a href="./all_presiones.php" class="tf-quick-btn">
+                            <i class="bi bi-briefcase-fill"></i>
+                            <span>Autorizacion</span>
+                        </a>
+                        <a href="./presiones.php" class="tf-quick-btn">
+                            <i class="bi bi-cash-coin"></i>
+                            <span>Cierre Presiones</span>
+                        </a>
+                        <a href="./reportes_kpi.php" class="tf-quick-btn">
+                            <i class="bi bi-graph-up-arrow"></i>
+                            <span>Reportes KPI</span>
+                        </a>
+                        <?php else: ?>
                         <a href="./nueva_requisicion.php" class="tf-quick-btn">
                             <i class="bi bi-file-earmark-plus"></i>
                             <span>Nueva requisicion</span>
@@ -205,6 +275,7 @@ include __DIR__ . '/../includes/layout_top.php';
                             <i class="bi bi-briefcase-fill"></i>
                             <span>Direccion</span>
                         </a>
+                        <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 </div>
