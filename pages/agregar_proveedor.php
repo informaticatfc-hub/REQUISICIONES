@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 include_once '../validarSesion.php';
 ?>
 <!DOCTYPE html>

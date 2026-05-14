@@ -1,4 +1,4 @@
-﻿var url = "../api/crud_direccion.php";
+var url = "../api/crud_direccion.php";
 var url2 = ".";
 
 const appRequesition = new Vue({

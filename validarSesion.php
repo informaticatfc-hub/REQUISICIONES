@@ -1,13 +1,28 @@
-﻿<?php
-session_start();
+<?php
+/**
+ * validarSesion.php — Fase 2
+ * ------------------------------------------------------------
+ * Sesion segura (cookie httpOnly, SameSite=Lax, regeneracion
+ * periodica). Cabeceras de seguridad activas. Si la sesion no
+ * existe, redirige a login.
+ *
+ * Compatible con el comportamiento legacy: sigue verificando
+ * $_SESSION["Usuario"].
+ * ------------------------------------------------------------
+ */
+
+require_once __DIR__ . '/api/rbac.php';
+
+tf_session_start();
+tf_security_headers();
 
 $requestDir = rtrim(str_replace('\\', '/', dirname($_SERVER['PHP_SELF'] ?? '')), '/');
 $loginPath = ($requestDir === '' || $requestDir === '.') ? 'pages/login.php' : 'login.php';
 
-// Verifica si la clave "Usuario" está definida
-if (!isset($_SESSION["Usuario"]) || $_SESSION["Usuario"] == "") {
-    // Redirige a login.php si la sesión no está activa
+if (!isset($_SESSION["Usuario"]) || $_SESSION["Usuario"] === "") {
     header("Location: " . $loginPath);
-    exit(); // Usa exit() para asegurarte de que el script se detenga después de la redirección
+    exit();
 }
-?>
+
+// Generar CSRF token para que el bottom layout pueda exponerlo al JS
+tf_csrf_token();

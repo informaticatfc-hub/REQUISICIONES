@@ -1,15 +1,25 @@
 <?php
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
-}
+/**
+ * api/auth.php — Helpers de API (Fase 2)
+ * ------------------------------------------------------------
+ * Mantiene la API publica original para no romper crud_*.php
+ * existentes y delega en api/rbac.php para sesion / permisos.
+ * ------------------------------------------------------------
+ */
 
+require_once __DIR__ . '/rbac.php';
+
+tf_session_start();
+
+// ------------------------------------------------------------
+// Helpers existentes (compatibilidad)
+// ------------------------------------------------------------
 function api_json_error($message, $statusCode = 400, $extra = array())
 {
     http_response_code($statusCode);
     header('Content-Type: application/json; charset=utf-8');
-
     echo json_encode(array_merge(array(
-        'error' => true,
+        'error'   => true,
         'message' => $message,
     ), $extra), JSON_UNESCAPED_UNICODE);
     exit;
@@ -19,7 +29,6 @@ function api_get_request_data()
 {
     $rawBody = file_get_contents('php://input');
     $decoded = json_decode($rawBody, true);
-
     return is_array($decoded) ? $decoded : array();
 }
 
@@ -28,46 +37,56 @@ function api_require_positive_int($value, $message)
     $filtered = filter_var($value, FILTER_VALIDATE_INT, array(
         'options' => array('min_range' => 1),
     ));
-
     if ($filtered === false) {
         api_json_error($message, 422);
     }
-
     return (int)$filtered;
 }
 
+/**
+ * Carga del usuario actual. Ahora incluye `role` y `permissions`.
+ */
 function api_get_current_user(PDO $conexion)
 {
-    static $cachedUser = null;
-
-    if ($cachedUser !== null) {
-        return $cachedUser;
-    }
-
-    if (empty($_SESSION['Usuario'])) {
-        api_json_error('Sesion no valida', 401);
-    }
-
-    $consulta = 'SELECT * FROM `users` WHERE `user_nameUser` = ? LIMIT 1';
-    $resultado = $conexion->prepare($consulta);
-    $resultado->execute(array($_SESSION['Usuario']));
-    $user = $resultado->fetch(PDO::FETCH_ASSOC);
-
-    if (!$user) {
-        api_json_error('Usuario de sesion no encontrado', 401);
-    }
-
-    if (!isset($user['user_name']) && isset($user['user_nameUser'])) {
-        $user['user_name'] = $user['user_nameUser'];
-    }
-
-    $cachedUser = $user;
-    return $cachedUser;
+    return tf_current_user($conexion);
 }
 
+/**
+ * Compat legacy: validar acceso a Direccion.
+ */
 function api_require_direction_access($user)
 {
-    if ((int)($user['user_directionAcess'] ?? 0) !== 1) {
+    $code = $user['role']['code'] ?? '';
+    $hasFlag = (int)($user['user_directionAcess'] ?? 0) === 1;
+    if ($code !== 'admin' && $code !== 'director' && !$hasFlag) {
         api_json_error('No tienes permisos para esta accion', 403);
     }
+}
+
+/**
+ * Nuevo helper: exige un permiso concreto (codigo modulo.accion).
+ * Uso:  api_require_permission($conexion, 'requisiciones.create');
+ */
+function api_require_permission(PDO $conexion, $code)
+{
+    return tf_require_permission($conexion, $code);
+}
+
+/**
+ * Nuevo helper: exige uno de los roles dados.
+ * Uso:  api_require_role($conexion, ['admin','director']);
+ */
+function api_require_role(PDO $conexion, $codes)
+{
+    return tf_require_role($conexion, $codes);
+}
+
+/**
+ * Validar CSRF para acciones que modifican datos.
+ * Si el body trae _csrf o el header X-CSRF-Token, lo valida.
+ * Para acciones GET-only no es necesario llamarlo.
+ */
+function api_require_csrf($payload = null)
+{
+    tf_csrf_validate($payload);
 }

@@ -1124,3 +1124,165 @@ body.tf-login {
 
 /* v-cloak: oculta Vue hasta que monta */
 [v-cloak] { display: none !important; }
+
+/* ============================================================
+   FASE 2 — Modulos, chips y elementos adicionales
+   ============================================================ */
+
+/* Chips (estados, etiquetas) */
+.tf-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: .74rem;
+    font-weight: 600;
+    background: var(--tf-surface-2);
+    color: var(--tf-text);
+    border: 1px solid var(--tf-border);
+}
+.tf-chip-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    display: inline-block;
+}
+.tf-chip-success { background: rgba(34,197,94,.12); color: #16a34a; border-color: rgba(34,197,94,.25); }
+.tf-chip-warning { background: rgba(245,158,11,.14); color: #d97706; border-color: rgba(245,158,11,.3); }
+.tf-chip-danger  { background: rgba(239,68,68,.12);  color: #dc2626; border-color: rgba(239,68,68,.25); }
+.tf-chip-primary { background: rgba(59,130,246,.12); color: var(--tf-primary); border-color: rgba(59,130,246,.25); }
+[data-bs-theme="dark"] .tf-chip-success { color: #4ade80; }
+[data-bs-theme="dark"] .tf-chip-warning { color: #fbbf24; }
+[data-bs-theme="dark"] .tf-chip-danger  { color: #fca5a5; }
+
+/* Grid de modulos (cards grandes clicables) */
+.tf-module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+}
+.tf-module-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 22px 22px 20px;
+    background: var(--tf-surface);
+    border: 1px solid var(--tf-border);
+    border-radius: 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: all .18s ease;
+    position: relative;
+    overflow: hidden;
+}
+.tf-module-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(59,130,246,.05), transparent 60%);
+    opacity: 0;
+    transition: opacity .18s ease;
+    pointer-events: none;
+}
+.tf-module-card:hover {
+    border-color: var(--tf-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px -16px rgba(15,23,42,.25);
+}
+.tf-module-card:hover::before { opacity: 1; }
+.tf-module-card:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    transform: none;
+}
+.tf-module-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background: rgba(59,130,246,.12);
+    color: var(--tf-primary);
+}
+.tf-module-icon-primary { background: rgba(59,130,246,.12); color: var(--tf-primary); }
+.tf-module-icon-success { background: rgba(34,197,94,.12); color: #16a34a; }
+.tf-module-icon-warning { background: rgba(245,158,11,.14); color: #d97706; }
+.tf-module-icon-danger  { background: rgba(239,68,68,.12); color: #dc2626; }
+[data-bs-theme="dark"] .tf-module-icon-success { color: #4ade80; }
+[data-bs-theme="dark"] .tf-module-icon-warning { color: #fbbf24; }
+[data-bs-theme="dark"] .tf-module-icon-danger  { color: #fca5a5; }
+
+.tf-module-label {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--tf-text);
+    letter-spacing: -.01em;
+}
+.tf-module-sub {
+    font-size: .82rem;
+    color: var(--tf-text-soft);
+    line-height: 1.5;
+}
+.tf-module-cta {
+    margin-top: auto;
+    padding-top: 8px;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--tf-primary);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.tf-module-card:hover .tf-module-cta i {
+    transform: translateX(2px);
+    transition: transform .18s ease;
+}
+
+/* Tabla de admin (gestion de usuarios) */
+.tf-admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.tf-admin-table thead th {
+    background: var(--tf-surface-2);
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--tf-text-soft);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--tf-border);
+    text-align: left;
+}
+.tf-admin-table tbody td {
+    padding: 12px 16px;
+    font-size: .88rem;
+    color: var(--tf-text);
+    border-bottom: 1px solid var(--tf-border);
+}
+.tf-admin-table tbody tr:hover { background: var(--tf-surface-2); }
+.tf-admin-table tbody tr:last-child td { border-bottom: 0; }
+
+/* Estado activo/inactivo */
+.tf-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.tf-status::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+.tf-status-active   { color: #16a34a; }
+.tf-status-inactive { color: #94a3b8; }
+[data-bs-theme="dark"] .tf-status-active { color: #4ade80; }
