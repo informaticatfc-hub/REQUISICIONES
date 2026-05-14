@@ -40,17 +40,31 @@ $tf_user_id_js     = $tf_user_id_js     ?? '';
     </footer>
 
     <!-- ====== Contexto global JS ====== -->
+    <?php
+        // CSRF token (creado por validarSesion.php). Si no esta, lo creamos.
+        $__tf_csrf = function_exists('tf_csrf_token') ? tf_csrf_token() : '';
+    ?>
     <script>
         window.TF_CONTEXT = {
             user: {
-                id:       <?= json_encode($tf_user_id_js !== '' ? $tf_user_id_js : null) ?>,
-                name:     <?= json_encode($tf_user['name']     ?? '') ?>,
-                role:     <?= json_encode($tf_user['role']     ?? '') ?>,
-                initials: <?= json_encode($tf_user['initials'] ?? '') ?>
+                id:        <?= json_encode($tf_user_id_js !== '' ? $tf_user_id_js : null) ?>,
+                name:      <?= json_encode($tf_user['name']      ?? '') ?>,
+                role:      <?= json_encode($tf_user['role']      ?? '') ?>,
+                roleCode:  <?= json_encode($tf_user['roleCode']  ?? '') ?>,
+                initials:  <?= json_encode($tf_user['initials']  ?? '') ?>,
+                permissions: <?= json_encode($tf_user['permissions'] ?? []) ?>
             },
             page: {
                 title:      <?= json_encode($tf_page_title ?? '') ?>,
                 active_nav: <?= json_encode($tf_active_nav ?? '') ?>
+            },
+            csrf: <?= json_encode($__tf_csrf) ?>
+        };
+        // Helper rapido: TF.can('requisiciones.create')
+        window.TF = {
+            can: function(code) {
+                var perms = (window.TF_CONTEXT.user && window.TF_CONTEXT.user.permissions) || [];
+                return perms.indexOf('*') !== -1 || perms.indexOf(code) !== -1;
             }
         };
     </script>
@@ -82,6 +96,18 @@ $tf_user_id_js     = $tf_user_id_js     ?? '';
     <!-- DataTables 2.0.8 -->
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
+    <?php endif; ?>
+
+    <!-- Configurar axios para enviar CSRF en cada peticion (Fase 2) -->
+    <?php if ($tf_use_axios): ?>
+    <script>
+        (function() {
+            if (window.axios && window.TF_CONTEXT && window.TF_CONTEXT.csrf) {
+                window.axios.defaults.headers.common['X-CSRF-Token'] = window.TF_CONTEXT.csrf;
+                window.axios.defaults.withCredentials = true;
+            }
+        })();
+    </script>
     <?php endif; ?>
 
     <!-- Controlador de layout v4 (theme, mobile nav, command palette) -->

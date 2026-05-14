@@ -2,12 +2,20 @@
 include_once '../validarSesion.php';
 
 // ----------------------------------------------------------------
-// Datos del usuario en sesion (preparado para RBAC en Fase 2)
+// Datos del usuario en sesion + RBAC
 // ----------------------------------------------------------------
-$usuario_sesion = $_SESSION['Usuario']           ?? '';
-$usuario_nombre = $_SESSION['UsuarioNombre']     ?? $usuario_sesion;
-$usuario_rol    = $_SESSION['UsuarioRol']        ?? 'Residente';
-$usuario_dirAcc = (int)($_SESSION['UsuarioDirAccess'] ?? 0);
+require_once __DIR__ . '/../api/rbac.php';
+require_once __DIR__ . '/../api/conexion.php';
+
+$__pdo  = (new Conexion())->Conectar();
+$__user = tf_current_user($__pdo);
+
+$usuario_sesion = $__user['user_nameUser'] ?? ($_SESSION['Usuario'] ?? '');
+$usuario_nombre = $__user['user_name']     ?? $usuario_sesion;
+$usuario_rol    = $__user['role']['name']  ?? 'Residente';
+$usuario_rolCode= $__user['role']['code']  ?? 'residente';
+$usuario_dirAcc = (int)($__user['user_directionAcess'] ?? 0);
+$usuario_perms  = $__user['permissions']   ?? [];
 
 // ----------------------------------------------------------------
 // Variables del layout
@@ -16,12 +24,14 @@ $tf_page_title     = 'Inicio';
 $tf_active_nav     = 'inicio';
 $tf_breadcrumb     = [['Inicio', './index.php']];
 $tf_user           = [
-    'name'     => $usuario_nombre,
-    'role'     => $usuario_rol,
-    'initials' => '',
+    'name'        => $usuario_nombre,
+    'role'        => $usuario_rol,
+    'roleCode'    => $usuario_rolCode,
+    'initials'    => '',
+    'permissions' => $usuario_perms,
 ];
-$tf_show_direccion = $usuario_dirAcc === 1;
-$tf_show_admin     = ($usuario_rol === 'Admin' || $usuario_rol === 'admin');
+$tf_show_direccion = in_array($usuario_rolCode, ['admin', 'director'], true) || $usuario_dirAcc === 1;
+$tf_show_admin     = $usuario_rolCode === 'admin';
 $tf_show_subbar    = true;
 $tf_user_id_js     = (string)$usuario_sesion;
 
@@ -240,10 +250,7 @@ include __DIR__ . '/../includes/layout_top.php';
 <?php
 // JS inline: carga datos via Vue 2, expone al layout
 $tf_inline_script = <<<JS
-    // ID del usuario: prioriza session (TF_CONTEXT) sobre localStorage legacy
-    var __tf_user_id = (window.TF_CONTEXT && window.TF_CONTEXT.user && window.TF_CONTEXT.user.id)
-        || localStorage.getItem("NameUser");
-
+    // El usuario ya viene de la sesion PHP (TF_CONTEXT); ya no dependemos de localStorage
     var url  = "../api/crud_index.php";
     var url2 = ".";
 
@@ -255,9 +262,8 @@ $tf_inline_script = <<<JS
             NameUser: (window.TF_CONTEXT && window.TF_CONTEXT.user && window.TF_CONTEXT.user.name) || ""
         },
         methods: {
-            consultarUsuario: function (user_id) {
-                if (!user_id) return;
-                axios.post(url, { accion: 1, id_user: user_id }).then(function (response) {
+            consultarUsuario: function () {
+                axios.post(url, { accion: 1 }).then(function (response) {
                     this.users = response.data || [];
                     if (this.users[0] && this.users[0].user_name) {
                         this.NameUser = this.users[0].user_name;
@@ -274,8 +280,8 @@ $tf_inline_script = <<<JS
                 });
             },
             irObra: function (idObra) {
-                try { localStorage.setItem("obraActiva", idObra); } catch (e) {}
-                window.location.href = url2 + "/obras.php";
+                try { sessionStorage.setItem("obraActiva", String(idObra)); } catch (e) {}
+                window.location.href = url2 + "/obras.php?obra=" + encodeURIComponent(idObra);
             },
             irDireecion: function () {
                 window.location.href = url2 + "/direccion.php";
@@ -286,7 +292,7 @@ $tf_inline_script = <<<JS
         },
         created: function () {
             this.listarObras();
-            this.consultarUsuario(__tf_user_id);
+            this.consultarUsuario();
         }
     });
 JS;
