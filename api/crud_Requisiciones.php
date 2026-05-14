@@ -18,6 +18,28 @@ $idReq = $_POST['idReq'] ?? 0;
 $numReq = $_POST['numeroReq'] ?? '';
 $id_presion = $_POST['id_presion'] ?? 0;
 
+// --- RBAC + CSRF (Fase 3) --------------------------------------------------
+// Lecturas exigen requisiciones.view; cada write exige su permiso especifico
+// y valida CSRF antes de tocar la BD.
+$writeActions = array(6, 7, 8, 9);
+if (in_array($accion, $writeActions, true)) {
+    api_require_csrf($_POST);
+}
+switch ($accion) {
+    case 6: // create automatico
+    case 7: // create manual
+        tf_require_permission($conexion, 'requisiciones.create');
+        break;
+    case 8: // editar (antes: direction access)
+        tf_require_permission($conexion, 'requisiciones.edit');
+        break;
+    case 9: // eliminar (antes: direction access)
+        tf_require_permission($conexion, 'requisiciones.delete');
+        break;
+    default:
+        tf_require_permission($conexion, 'requisiciones.view');
+}
+
 $currentUser = api_get_current_user($conexion);
 $data = array();
 
@@ -91,12 +113,19 @@ switch ($accion) {
             $resultado = $conexion->prepare($consulta);
             $resultado->execute(array($clave, $numeroRequisicion, $nombreReq, $obraId, $fechaReq, $folio));
 
+            $newId = (int)$conexion->lastInsertId();
             $data = array(
                 'success' => true,
-                'requisicion_id' => (int)$conexion->lastInsertId(),
+                'requisicion_id' => $newId,
                 'numero_nuevo' => $numeroRequisicion,
             );
             $conexion->commit();
+            tf_audit_log($conexion, 'requisiciones.create.auto', 'requisiciones', $newId, array(
+                'obra' => $obraId,
+                'clave' => $clave,
+                'numero' => $numeroRequisicion,
+                'folio' => $folio,
+            ));
         } catch (Throwable $e) {
             if ($conexion->inTransaction()) {
                 $conexion->rollBack();
@@ -142,12 +171,20 @@ switch ($accion) {
             $resultado = $conexion->prepare($consulta);
             $resultado->execute(array($clave, $numeroRequisicion, $nombreReq, $obraId, $fechaReq, $folioManual, $hojasIniciales));
 
+            $newId = (int)$conexion->lastInsertId();
             $data = array(
                 'success' => true,
-                'requisicion_id' => (int)$conexion->lastInsertId(),
+                'requisicion_id' => $newId,
                 'numero_nuevo' => $numeroRequisicion,
             );
             $conexion->commit();
+            tf_audit_log($conexion, 'requisiciones.create.manual', 'requisiciones', $newId, array(
+                'obra' => $obraId,
+                'clave' => $clave,
+                'numero' => $numeroRequisicion,
+                'folio' => $folioManual,
+                'hojas_iniciales' => $hojasIniciales,
+            ));
         } catch (Throwable $e) {
             if ($conexion->inTransaction()) {
                 $conexion->rollBack();
@@ -157,7 +194,6 @@ switch ($accion) {
         break;
 
     case 8:
-        api_require_direction_access($currentUser);
         $requisicionId = api_require_positive_int($idReq, 'Requisicion invalida');
         $numeroEditado = filter_var($numReq, FILTER_VALIDATE_INT, array('options' => array('min_range' => 0)));
         if ($numeroEditado === false || $nombreReq === '') {
@@ -192,10 +228,14 @@ switch ($accion) {
             'nombre_nuevo' => $nombreReq,
             'rows_affected' => $stmtUpd->rowCount(),
         );
+        tf_audit_log($conexion, 'requisiciones.edit', 'requisiciones', $requisicionId, array(
+            'numero_anterior' => $numeroActual,
+            'numero_nuevo' => $nuevoNumero,
+            'nombre_nuevo' => $nombreReq,
+        ));
         break;
 
     case 9:
-        api_require_direction_access($currentUser);
         $requisicionId = api_require_positive_int($idReq, 'Requisicion invalida');
 
         try {
@@ -219,6 +259,9 @@ switch ($accion) {
 
             $conexion->commit();
             $data = array('status' => 'ok');
+            tf_audit_log($conexion, 'requisiciones.delete', 'requisiciones', $requisicionId, array(
+                'hojas_eliminadas' => count($idsHojas),
+            ));
         } catch (Throwable $e) {
             if ($conexion->inTransaction()) {
                 $conexion->rollBack();

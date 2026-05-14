@@ -19,6 +19,17 @@ $datos = json_decode((isset($_POST['items'])) ? $_POST['items'] : '');
 $observaciones = (isset($_POST['observaciones'])) ? $_POST['observaciones'] : '';
 $time = (isset($_POST['time'])) ? $_POST['time'] : '';
 $conceptoUnico = (isset($_POST['conceptoUnico'])) ? $_POST['conceptoUnico'] : '';
+
+// --- RBAC + CSRF (Fase 3) ---
+// case 1 = INSERT hoja + items (write); resto son lecturas para construir la UI.
+$accionInt = (int)$accion;
+if ($accionInt === 1) {
+    api_require_csrf($_POST);
+    tf_require_permission($conexion, 'requisiciones.create');
+} else {
+    tf_require_permission($conexion, 'requisiciones.view');
+}
+
 $currentUser = api_get_current_user($conexion);
 
 switch ($accion) {
@@ -176,6 +187,15 @@ switch ($accion) {
         $conexion->commit();
 
         $data = $id_hoja;
+        tf_audit_log($conexion, 'requisiciones.hoja.create', 'hojasrequisicion', (int)$id_hoja, array(
+            'id_req' => (int)$id_Req,
+            'numero' => $hoja,
+            'total' => $totalPagar,
+            'forma_pago' => $formaPago,
+            'proveedor' => (int)$clv_Prov,
+            'empresa' => (int)$clv_Emisor,
+            'items_count' => is_array($datos) ? count($datos) : 0,
+        ));
         } catch (Throwable $e) {
             if ($conexion->inTransaction()) {
                 $conexion->rollBack();

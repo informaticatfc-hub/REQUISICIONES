@@ -1,21 +1,25 @@
 <?php
 include_once 'conexion.php';
+include_once 'auth.php';
 $objeto = new Conexion();
 $conexion = $objeto->Conectar();
 
-
 //Conexion con axios, por parametro POST
-$_POST = json_decode(file_get_contents("php://input"), true);
+$_POST = api_get_request_data();
 
-$accion = (isset($_POST['accion'])) ? $_POST['accion'] : '';
-$id_user = (isset($_POST['id_user'])) ? $_POST['id_user'] : '';
+$accion = (isset($_POST['accion'])) ? (int)$_POST['accion'] : 0;
+
+// --- RBAC (Fase 3) ---
+// Solo lecturas para el dashboard de catalogo principal.
+tf_require_permission($conexion, 'catalogos.view');
+$currentUser = api_get_current_user($conexion);
+$data = array();
 
 switch ($accion) {
     case 1:
-        $consulta = "SELECT * FROM `users` WHERE `user_id` = '$id_user';";
-        $resultado = $conexion->prepare($consulta);
-        $resultado->execute();
-        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
+        // Antes: SELECT * FROM users WHERE user_id = '$id_user' (SQL INJECTION).
+        // Ahora se devuelve el usuario derivado de la sesion, sin tocar entrada del cliente.
+        $data = array($currentUser);
         break;
     case 2:
         $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' ORDER BY `obras_nombre`";

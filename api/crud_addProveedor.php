@@ -1,13 +1,13 @@
 <?php
 include_once 'conexion.php';
+include_once 'auth.php';
 $objeto = new Conexion();
 $conexion = $objeto->Conectar();
 
 //Conexion con axios, por parametro POST
-$_POST = json_decode(file_get_contents("php://input"), true);
+$_POST = api_get_request_data();
 
-$accion = (isset($_POST['accion'])) ? $_POST['accion'] : '';
-$id_user = isset($_POST['id_user']) ? (int)$_POST['id_user'] : 0;
+$accion = (isset($_POST['accion'])) ? (int)$_POST['accion'] : 0;
 $nombre = isset($_POST['nombre']) ? trim((string)$_POST['nombre']) : '';
 $direccion = isset($_POST['direccion']) ? trim((string)$_POST['direccion']) : '';
 $rfc = isset($_POST['rfc']) ? trim((string)$_POST['rfc']) : '';
@@ -20,6 +20,16 @@ $tipoProv = isset($_POST['tipoProv']) ? trim((string)$_POST['tipoProv']) : '';
 $sucursal = isset($_POST['sucursal']) ? trim((string)$_POST['sucursal']) : '';
 $telefono = isset($_POST['telefono']) ? trim((string)$_POST['telefono']) : '';
 $correo = isset($_POST['correo']) ? trim((string)$_POST['correo']) : '';
+
+// --- RBAC + CSRF (Fase 3) ---
+// case 4 = INSERT proveedor -> proveedores.manage; resto son lecturas.
+if ($accion === 4) {
+    api_require_csrf($_POST);
+    tf_require_permission($conexion, 'proveedores.manage');
+} else {
+    tf_require_permission($conexion, 'catalogos.view');
+}
+$currentUser = api_get_current_user($conexion);
 $data = array();
 
 switch ($accion) {
@@ -30,10 +40,8 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 2:
-        $consulta = "SELECT * FROM `users` WHERE `user_id` = ?";
-        $resultado = $conexion->prepare($consulta);
-        $resultado->execute([$id_user]);
-        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
+        // Antes leia $_POST['id_user'] (impersonacion). Ahora devuelve el usuario de sesion.
+        $data = array($currentUser);
         break;
     case 3:
         $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' ORDER BY `obras_nombre`";
@@ -45,7 +53,13 @@ switch ($accion) {
         $consulta = "INSERT INTO `provedores` (`proveedor_id`, `proveedor_nombre`, `presiones_type`, `proveedor_rfc`, `proveedor_clabe`, `proveedor_numeroCuenta`, `proveedor_sucursal`, `proveedor_refBanco`, `presiones_tarjetaBanco`, `proveedor_banco`, `proveedor_email`, `proveedor_telefono`, `proveedor_estatus`) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO')";
         $resultado = $conexion->prepare($consulta);
         $resultado->execute([$nombre, $tipoProv, $rfc, $clabe, $cuenta, $sucursal, $referencia, $tarjeta, $banco, $correo, $telefono]);
-        $data = array('ok' => true);
+        $newId = (int)$conexion->lastInsertId();
+        $data = array('ok' => true, 'proveedor_id' => $newId);
+        tf_audit_log($conexion, 'proveedores.create', 'provedores', $newId, array(
+            'nombre' => $nombre,
+            'rfc' => $rfc,
+            'tipo' => $tipoProv,
+        ));
         break;
 }
 

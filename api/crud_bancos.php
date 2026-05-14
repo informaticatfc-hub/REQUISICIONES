@@ -1,23 +1,32 @@
 <?php
 include_once 'conexion.php';
+include_once 'auth.php';
 $objeto = new Conexion();
 $conexion = $objeto->Conectar();
 
 //Conexion con axios, por parametro POST
-$_POST = json_decode(file_get_contents("php://input"), true);
+$_POST = api_get_request_data();
 
-$accion = (isset($_POST['accion'])) ? $_POST['accion'] : '';
-$id_user = (isset($_POST['id_user'])) ? $_POST['id_user'] : '';
-$id_banco = (isset($_POST['id_banco'])) ? $_POST['id_banco'] : ''; 
+$accion = (isset($_POST['accion'])) ? (int)$_POST['accion'] : 0;
+$id_banco = (isset($_POST['id_banco'])) ? $_POST['id_banco'] : '';
 $formValues = isset($_POST['formValues']) ? $_POST['formValues'] : null;
+
+// --- RBAC + CSRF (Fase 3) ---
+// case 4 = disable, 6 = edit, 7 = insert -> bancos.manage; resto son lecturas.
+$writeActions = array(4, 6, 7);
+if (in_array($accion, $writeActions, true)) {
+    api_require_csrf($_POST);
+    tf_require_permission($conexion, 'bancos.manage');
+} else {
+    tf_require_permission($conexion, 'catalogos.view');
+}
+$currentUser = api_get_current_user($conexion);
 $data = array();
 
 switch ($accion) {
     case 1:
-        $consulta = "SELECT * FROM `users` WHERE `user_id` = ?";
-        $resultado = $conexion->prepare($consulta);
-        $resultado->execute(array((int)$id_user));
-        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
+        // Antes leia $_POST['id_user'] (impersonacion). Ahora devuelve el usuario de sesion.
+        $data = array($currentUser);
         break;
     case 2:
         $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' ORDER BY `obras_nombre`";
@@ -36,6 +45,7 @@ switch ($accion) {
         $resultado = $conexion->prepare($consulta);
         $resultado->execute(array((int)$id_banco));
         $data = 1;
+        tf_audit_log($conexion, 'bancos.disable', 'bancos', (int)$id_banco, null);
         break;
     case 5:
         $consulta = "SELECT * FROM `bancos` WHERE  `banco_id` = ? LIMIT 1";
@@ -59,6 +69,10 @@ switch ($accion) {
         $resultado->execute();
     
         $data = 1;
+        tf_audit_log($conexion, 'bancos.edit', 'bancos', (int)$id_banco, array(
+            'razon_social' => $formValues['razonSocialBanco'] ?? null,
+            'nombre_comercial' => $formValues['comercialBanco'] ?? null,
+        ));
         break;
     case 7:
         $consulta = "INSERT INTO `bancos`
@@ -72,8 +86,12 @@ switch ($accion) {
         $resultado->bindParam(':NombreComercial', $formValues['comercialBanco']);     
         
         $resultado->execute();
-    
-        $data = 1;
+        $newId = (int)$conexion->lastInsertId();
+        $data = array('ok' => true, 'banco_id' => $newId);
+        tf_audit_log($conexion, 'bancos.create', 'bancos', $newId, array(
+            'razon_social' => $formValues['razonSocialBanco'] ?? null,
+            'nombre_comercial' => $formValues['comercialBanco'] ?? null,
+        ));
         break;
 }
 

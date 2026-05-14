@@ -1,19 +1,25 @@
 <?php
 include_once 'conexion.php';
+include_once 'auth.php';
 $objeto = new Conexion();
 $conexion = $objeto->Conectar();
 
 //Conexion con axios, por parametro POST
-$_POST = json_decode(file_get_contents("php://input"), true);
+$_POST = api_get_request_data();
 
 $accion = (isset($_POST['accion'])) ? $_POST['accion'] : '';
-$id_user = (isset($_POST['id_user'])) ? $_POST['id_user'] : '';
 $obra = (isset($_POST['obra'])) ? $_POST['obra'] : '';
 $nombreReq  = (isset($_POST['nombreReq'])) ? $_POST['nombreReq'] : '';
 $fechaReq =   (isset($_POST['fechaReq'])) ? $_POST['fechaReq'] : '';
 $idPresion =   (isset($_POST['idPresion'])) ? $_POST['idPresion'] : '';
 $idReq =   (isset($_POST['idReq'])) ? $_POST['idReq'] : '';
 $idHoja =   (isset($_POST['idHoja'])) ? $_POST['idHoja'] : '';
+
+// --- RBAC (Fase 3) ---
+// Todas las acciones son lecturas usadas para armar el panel de enlace de requisiciones.
+// Antes aceptaba id_user desde POST; ahora siempre se deriva de sesion (case 2).
+tf_require_permission($conexion, 'requisiciones.view');
+$currentUser = api_get_current_user($conexion);
 $data = array();
 
 switch ($accion) {
@@ -24,10 +30,8 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 2:
-        $consulta = "SELECT * FROM `users` WHERE `user_id` = ?";
-        $resultado = $conexion->prepare($consulta);
-        $resultado->execute(array((int)$id_user));
-        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
+        // Antes leia $_POST['id_user'] (impersonacion). Ahora devuelve el usuario de sesion.
+        $data = array($currentUser);
         break;
     case 3:
         $consulta = "SELECT `obras_nombre` FROM `obras` WHERE `obras_id` = ?";

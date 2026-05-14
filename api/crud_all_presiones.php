@@ -14,8 +14,18 @@ $idHoja = (isset($_POST['idHoja'])) ? $_POST['idHoja'] : '';
 $adeudo = (isset($_POST['parcial'])) ? $_POST['parcial'] : '';
 $coments = (isset($_POST['coments'])) ? $_POST['coments'] : '';
 $presion = (isset($_POST['presion'])) ? $_POST['presion'] : [];
+
+// --- RBAC + CSRF (Fase 3) ---
+// case 1 (echo user) y 2-3 (listas) son lecturas; 4-7 son writes (autorizar / actualizar pagos).
+$writeActions = array(4, 5, 6, 7);
+$accionInt = (int)$accion;
+if (in_array($accionInt, $writeActions, true)) {
+    api_require_csrf($_POST);
+    tf_require_permission($conexion, 'presiones.authorize');
+} else {
+    tf_require_permission($conexion, 'presiones.view');
+}
 $currentUser = api_get_current_user($conexion);
-api_require_direction_access($currentUser);
 
 switch ($accion) {
     case 1:
@@ -138,6 +148,11 @@ switch ($accion) {
             $data = [
                 "success" => true
             ];
+            tf_audit_log($conexion, 'presiones.authorize.hoja', 'hojasrequisicion', (int)$idHoja, array(
+                'adeudo' => (float)$adeudo,
+                'observaciones' => $coments,
+                'estatus' => 'AUTORIZADA',
+            ));
         } else {
             $consulta = "UPDATE `hojasrequisicion` SET `hojaRequisicion_estatus` = 'LIGADA', `hojarequisicion_adeudo` = 0, `hojaRequisicion_observaciones` = :observaciones WHERE `hojasrequisicion`.`hojaRequisicion_id` = :idHoja";
             $resultado = $conexion->prepare($consulta);
@@ -147,6 +162,10 @@ switch ($accion) {
             $data = [
                 "success" => true
             ];
+            tf_audit_log($conexion, 'presiones.reject.hoja', 'hojasrequisicion', (int)$idHoja, array(
+                'observaciones' => $coments,
+                'estatus' => 'LIGADA',
+            ));
         }
         break;
     case 5:
@@ -155,6 +174,7 @@ switch ($accion) {
         $resultado->bindParam(':id_hoja', $idHoja, PDO::PARAM_INT);
         $resultado->execute();
         $data = 0;
+        tf_audit_log($conexion, 'presiones.hoja.toLigada', 'hojasrequisicion', (int)$idHoja, null);
         break;
     case 6:
         $consulta = "UPDATE `hojasrequisicion` SET `hojarequisicion_adeudo` = :adeudo , `hojaRequisicion_observaciones` = :observaciones WHERE `hojasrequisicion`.`hojaRequisicion_id` = :id_hoja";
@@ -164,6 +184,10 @@ switch ($accion) {
         $resultado->bindParam(':id_hoja', $idHoja, PDO::PARAM_INT);
         $resultado->execute();
         $data = 0;
+        tf_audit_log($conexion, 'presiones.hoja.updateAdeudo', 'hojasrequisicion', (int)$idHoja, array(
+            'adeudo' => (float)$adeudo,
+            'observaciones' => $coments,
+        ));
         break;
     case 7:
         try {
@@ -206,6 +230,10 @@ switch ($accion) {
                     'procesados' => $registrosProcesados
                 ];
             }
+            tf_audit_log($conexion, 'presiones.batch.authorize', 'hojasrequisicion', null, array(
+                'procesados' => $registrosProcesados,
+                'fallos' => $registrosFallidos,
+            ));
         } catch (Exception $e) {
             $data = [
                 'status' => 'error',

@@ -31,8 +31,21 @@ $adeudo = (isset($_POST['adeudo'])) ? $_POST['adeudo'] : '';
 $Presiones = json_decode((isset($_POST['Presiones'])) ? $_POST['Presiones'] : '', true);
 $output = "";
 $textExpecial = "";
+
+// --- RBAC + CSRF (Fase 3) ---
+// case 5 = marcar PAGADA, case 7 = cerrar presion (AUTORIZADO), case 6 = export Excel.
+// El resto son lecturas para construir la vista de detalle.
+$accionInt = (int)$accion;
+$writeActions = array(5, 7);
+if (in_array($accionInt, $writeActions, true)) {
+    api_require_csrf($_POST);
+    tf_require_permission($conexion, 'presiones.authorize');
+} elseif ($accionInt === 6) {
+    tf_require_permission($conexion, 'presiones.view');
+} else {
+    tf_require_permission($conexion, 'presiones.view');
+}
 $currentUser = api_get_current_user($conexion);
-api_require_direction_access($currentUser);
 
 switch ($accion) {
     case 1:
@@ -99,15 +112,16 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 5:
-        /* $consulta = "INSERT INTO `logs` (`log_id`, `log_accion`, `log_fechaAccion`, `log_usuario`, `log_horaAccion`, `log_moduloAccion`) VALUES (NULL, 'Agregar', '$fechaPago', '$id_user', '$time', 'Presion Detalle')";
-        $resultado = $conexion->prepare($consulta);
-        $resultado->execute(); */
         $consulta = "UPDATE `hojasrequisicion` SET `hojaRequisicion_estatus` = 'PAGADA', `hojaRequisicion_fechaPago` = :fecha_pago, `hojasRequisicion_bancoPago` = :banco_pago WHERE `hojasrequisicion`.`hojaRequisicion_id` = :id_hoja";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':fecha_pago', $fechaPago, PDO::PARAM_STR);
         $resultado->bindValue(':banco_pago', $bancoPago, PDO::PARAM_STR);
         $resultado->bindValue(':id_hoja', (int)$idHoja, PDO::PARAM_INT);
         $resultado->execute();
+        tf_audit_log($conexion, 'presiones.hoja.pagada', 'hojasrequisicion', (int)$idHoja, array(
+            'fecha_pago' => $fechaPago,
+            'banco_pago' => $bancoPago,
+        ));
         break;
     case 6:
         if (isset($_POST["export"])) {
@@ -267,6 +281,9 @@ switch ($accion) {
                     'presion_id' => (int) $idPresion
                 ]
             ];
+            tf_audit_log($conexion, 'presiones.close', 'presiones', (int)$idPresion, array(
+                'hojas_actualizadas' => $autorizadas,
+            ));
         } catch (Throwable $e) {
             if ($conexion->inTransaction()) {
                 $conexion->rollBack();
