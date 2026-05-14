@@ -7,6 +7,7 @@
      - Command palette (Ctrl + K / Cmd + K)
      - Cierre por Escape
      - Auto-cierre al cambiar a desktop
+     - Carga del dropdown "Obras" del topbar (lazy on first open)
    No depende de jQuery. Compatible con Bootstrap 5.3.
    ===================================================================== */
 (function () {
@@ -112,12 +113,111 @@
             }
         }
 
+        // ---------------- DROPDOWN OBRAS (TOPBAR) ----------------
+        // Pobla #tfObrasMenuList con las obras ACTIVO la primera vez que se
+        // abre el dropdown (lazy). Usa fetch nativo (no depende de axios)
+        // para que funcione aunque la pagina no haya incluido axios.
+        var obrasMenuTrigger = document.querySelector('#tfObrasMenu')
+            ? document.querySelector('#tfObrasMenu').parentNode.querySelector('[data-bs-toggle="dropdown"]')
+            : null;
+        var obrasMenuList = document.getElementById('tfObrasMenuList');
+        var obrasLoaded = false;
+        var obrasLoading = false;
+
+        function escHtml(s) {
+            if (s === null || s === undefined) return '';
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderObrasEmpty(msg) {
+            if (!obrasMenuList) return;
+            obrasMenuList.innerHTML =
+                '<div class="px-3 py-2 small text-muted">' + escHtml(msg) + '</div>';
+        }
+
+        function renderObrasList(obras) {
+            if (!obrasMenuList) return;
+            if (!obras || !obras.length) {
+                renderObrasEmpty('No hay obras activas.');
+                return;
+            }
+            // Resolver ruta a obras.php segun la pagina actual
+            // (las paginas viven en /pages/* asi que el href relativo es ./obras.php)
+            var base = (window.location.pathname.indexOf('/pages/') !== -1) ? './' : './pages/';
+            var html = '';
+            for (var i = 0; i < obras.length; i++) {
+                var o = obras[i];
+                var id = o.obras_id != null ? o.obras_id : '';
+                var nom = o.obras_nombre || ('Obra #' + id);
+                html += '<a class="dropdown-item rounded py-2 px-3"'
+                     + ' href="' + escHtml(base) + 'obras.php?obra=' + encodeURIComponent(id) + '">'
+                     + '<i class="bi bi-building text-primary me-2"></i>'
+                     + '<span>' + escHtml(nom) + '</span>'
+                     + '</a>';
+            }
+            obrasMenuList.innerHTML = html;
+        }
+
+        function loadObrasMenu() {
+            if (obrasLoaded || obrasLoading || !obrasMenuList) return;
+            obrasLoading = true;
+            renderObrasEmpty('Cargando...');
+
+            // Resolver path al endpoint segun la pagina actual
+            var apiPath = (window.location.pathname.indexOf('/pages/') !== -1)
+                ? '../api/crud_index.php'
+                : './api/crud_index.php';
+
+            var headers = { 'Content-Type': 'application/json' };
+            if (window.TF_CONTEXT && window.TF_CONTEXT.csrf) {
+                headers['X-CSRF-Token'] = window.TF_CONTEXT.csrf;
+            }
+
+            fetch(apiPath, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: headers,
+                body: JSON.stringify({ accion: 2, modo: 'todas' })
+            }).then(function (resp) {
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                return resp.json();
+            }).then(function (data) {
+                obrasLoaded = true;
+                renderObrasList(Array.isArray(data) ? data : []);
+            }).catch(function (err) {
+                console.error('No se pudieron cargar las obras del topbar:', err);
+                renderObrasEmpty('No se pudieron cargar las obras.');
+            }).finally(function () {
+                obrasLoading = false;
+            });
+        }
+
+        if (obrasMenuTrigger) {
+            // Carga al primer click (lazy) — antes de que Bootstrap muestre el menu
+            obrasMenuTrigger.addEventListener('click', loadObrasMenu, { once: false });
+            // Tambien escuchamos el evento de Bootstrap por si el menu se abre
+            // de otra forma (teclado, programaticamente)
+            var ddParent = obrasMenuTrigger.parentNode;
+            if (ddParent) {
+                ddParent.addEventListener('show.bs.dropdown', loadObrasMenu);
+            }
+        }
+
         // ---------------- EXPONER API GLOBAL ----------------
         window.TfLayout = {
             openCmd: openCmd,
             closeCmd: closeCmd,
             openNav: openNav,
             closeNav: closeNav,
+            reloadObrasMenu: function () {
+                obrasLoaded = false;
+                loadObrasMenu();
+            },
             setTheme: function (t) {
                 html.setAttribute('data-bs-theme', t === 'dark' ? 'dark' : 'light');
                 localStorage.setItem('tf_theme', t);
