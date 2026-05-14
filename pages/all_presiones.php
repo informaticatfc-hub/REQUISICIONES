@@ -315,7 +315,7 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
                                                 <button class="btn btn-secondary" type="button" @click="exportarCsvObra(index)">Exportar CSV</button>
                                                 <button class="btn btn-secondary" type="button" @click="exportarExcelObra(index)">Exportar Excel</button>
                                                 <button class="btn btn-secondary" type="button" @click="triggerImportExcel(index)">Importar Excel</button>
-                                                <input type="file" :id="'excelImport'+index" accept=".xlsx,.xls" class="d-none" @change="importarExcelObra($event,index)">
+                                                <input type="file" :id="'excelImport'+index" accept=".xlsx,.csv" class="d-none" @change="importarExcelObra($event,index)">
                                             </div>
                                             <div class="excel-table-wrap">
                                             <table class="table table-prof excel-grid align-middle w-100">
@@ -387,11 +387,10 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
     <!--scripts de sweetalert-->
     <script src="../assets/lib/sweetalert/sweetalert2.min.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <!-- scripts constume-->
     <script src="../assets/js/all_presiones.js?v=fase07f"></script>
-    <script src="../assets/js/layout_sidebar.js?v=fase07b"></script>
 </body>
 
 </html>

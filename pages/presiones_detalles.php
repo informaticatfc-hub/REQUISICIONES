@@ -204,6 +204,9 @@ include_once '../validarSesion.php';
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
 
+    <!--SheetJS para exportacion Excel real (.xlsx)-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <!--CDN de la bibloteca JsPDF-->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js" integrity="sha384-NaWTHo/8YCBYJ59830LTz/P4aQZK1sS0SneOgAvhsIl3zBu8r9RevNg5lHCHAuQ/" crossorigin="anonymous"></script>
 
@@ -211,7 +214,6 @@ include_once '../validarSesion.php';
 
     <!-- scripts constume-->
     <script src="../assets/js/presiones_detalles.js"></script>
-    <script src="../assets/js/layout_sidebar.js?v=fase07b"></script>
 </body>
 
 </html>

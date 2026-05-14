@@ -188,7 +188,8 @@ UNION ALL SELECT 'cuarentena RL', COUNT(*) FROM _quarantine_requisicionesligadas
 - Eliminar `localStorage.NameUser` de los ~17 JS legacy restantes.
 - Refactorizar `crud_admin.php` para consumir `v_users_full`.
 - Refactorizar `crud_all_presiones.php` para consumir `v_presiones_summary`.
-- Deprecar `assets/js/layout_sidebar.js` y `assets/css/main.css`.
+- `assets/js/layout_sidebar.js` ya retirado en Fase 08.
+- `assets/css/main.css` queda como legacy temporal hasta concluir la migracion completa a layout v4.
 - Activar 2FA (tabla ya existe + indices) — Fase 5.
 - Tests automatizados (PHPUnit + Playwright) — diferible.
 - HSTS — solo produccion.

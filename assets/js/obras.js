@@ -51,8 +51,21 @@ const appRequesition = new Vue({
         }
     },
     created: function () {
+        var params = new URLSearchParams(window.location.search);
+        var obraFromUrl = params.get('obra');
+        if (obraFromUrl) {
+            localStorage.setItem("obraActiva", obraFromUrl);
+        } else {
+            // Al entrar al modulo de obras sin parametro explicito,
+            // se limpia la obra previa para forzar seleccion manual.
+            localStorage.removeItem("obraActiva");
+        }
+
         this.listarObras();
-        this.infoObraActiva(localStorage.getItem("obraActiva"));
+        var obraActiva = localStorage.getItem("obraActiva");
+        if (obraActiva) {
+            this.infoObraActiva(obraActiva);
+        }
         this.consultarUsuario();
     },
     computed: {

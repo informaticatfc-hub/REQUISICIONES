@@ -36,18 +36,32 @@ if (!isset($legacy_actions) || !is_array($legacy_actions) || !count($legacy_acti
 ?>
 <nav class="navbar app-navbar">
     <div class="container-fluid legacy-navbar-shell">
+        <div class="dropdown">
+            <button class="sidebar-toggle-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="sidebar-toggle-icon" aria-hidden="true">
+                    <span class="sidebar-toggle-line"></span>
+                    <span class="sidebar-toggle-line"></span>
+                    <span class="sidebar-toggle-line"></span>
+                </span>
+                ACCIONES
+            </button>
+            <div class="dropdown-menu legacy-actions-menu shadow">
+                <?php foreach ($legacy_actions as $__action):
+                    $__label = htmlspecialchars((string)($__action['label'] ?? 'Accion'));
+                    $__href = htmlspecialchars((string)($__action['href'] ?? '#'));
+                    $__class = (string)($__action['class'] ?? 'tf-nav-link');
+                    $__danger = strpos($__class, 'tf-nav-danger') !== false;
+                ?>
+                <a href="<?= $__href ?>" class="dropdown-item legacy-action-item<?= $__danger ? ' text-danger' : '' ?>"><?= $__label ?></a>
+                <?php endforeach; ?>
+            </div>
+        </div>
         <a href="./index.php" class="navbar-brand legacy-navbar-brand">
             <span class="legacy-navbar-logo">TF</span>
             <span class="legacy-navbar-title">The Fuentes Corporation Workspace</span>
         </a>
-        <div class="legacy-navbar-actions">
-            <?php foreach ($legacy_actions as $__action):
-                $__label = htmlspecialchars((string)($__action['label'] ?? 'Accion'));
-                $__href = htmlspecialchars((string)($__action['href'] ?? '#'));
-                $__class = htmlspecialchars((string)($__action['class'] ?? 'tf-nav-link'));
-            ?>
-            <a href="<?= $__href ?>" class="<?= $__class ?>"><?= $__label ?></a>
-            <?php endforeach; ?>
+        <div class="legacy-navbar-actions-placeholder" aria-hidden="true">
+            <span class="legacy-navbar-role"><?= htmlspecialchars((string)($__legacyUser['role']['name'] ?? 'Usuario')) ?></span>
         </div>
     </div>
 </nav>

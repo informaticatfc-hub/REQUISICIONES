@@ -196,27 +196,40 @@ const appRequesition = new Vue({
         },
         
         exportarExcel: function () {
-            var total = this.sumatoria(this.presiones,"total");
-            var adeudo = this.sumatoria(this.presiones,"adeudo");
+            if (!window.XLSX || !window.XLSX.utils) {
+                Swal.fire('Excel no disponible', 'No fue posible cargar la libreria para exportar .xlsx.', 'warning');
+                return;
+            }
 
-            axios.post(url, { accion: 6, datos: JSON.stringify(this.presiones), namePres: this.obraActiva[0].obras_nombre ,export: "", total: total, adeudo: adeudo }, { responseType: 'blob' })
-                .then(response => {
-                    // Crear un objeto URL para el blob
-                    const url = window.URL.createObjectURL(new Blob([response.data]));
-                    // Crear un enlace para descargar el archivo
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.setAttribute('download', 'PRESIONES DE LA SEMANA "'+this.semana+'" Y DIA "'+this.dia+'" DE LA OBRA "'+this.obraActiva[0].obras_nombre+'".xls'); // Nombre del archivo que se descargará
-                    // Agregar el enlace al DOM
-                    document.body.appendChild(link);
-                    // Hacer clic en el enlace para iniciar la descarga
-                    link.click();
-                    // Limpiar el DOM
-                    link.remove();
+            var obraNombre = (this.obraActiva.length && this.obraActiva[0].obras_nombre)
+                ? this.obraActiva[0].obras_nombre
+                : 'obra';
+
+            var rows = this.presiones
+                .filter(function (p) {
+                    return p.HojaEstatus === 'LIGADA' || p.HojaEstatus === 'AUTORIZADA' || p.HojaEstatus === 'PAGADA';
                 })
-                .catch(error => {
-                    console.error('Error al descargar el archivo:', error);
+                .map((p) => {
+                    return {
+                        CLAVE: p.clave || '',
+                        NUM_REQUISICION: p.NumReq || '',
+                        PROVEEDOR: p.proveedor || '',
+                        CONCEPTO: p.concepto || '',
+                        ADEUDO: this.toNumber(p.total),
+                        NETO_A_PAGAR: this.toNumber(p.adeudo),
+                        FORMA_PAGO: p.formaPago || '',
+                        FECHA_PAGO: p.Fecha || '',
+                        BANCO_PAGO: p.Banco || ''
+                    };
                 });
+
+            var ws = XLSX.utils.json_to_sheet(rows);
+            var wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Presion');
+            XLSX.writeFile(
+                wb,
+                'presion_semana_' + this.semana + '_dia_' + this.dia + '_obra_' + String(obraNombre).replace(/\s+/g, '_') + '.xlsx'
+            );
         },
         cerrarPresion: async function () {
             const swalWithBootstrapButtons = await Swal.mixin({
@@ -287,6 +300,10 @@ const appRequesition = new Vue({
             
             // Retornar el formato con o sin el símbolo de pesos
             return incluirSimbolo ? "$" + formato : formato;
+        },
+        toNumber: function (value) {
+            var num = parseFloat(value);
+            return isNaN(num) ? 0 : num;
         },
         sumatoria: function(arreglo, indice){
             var totalRetunr = 0;

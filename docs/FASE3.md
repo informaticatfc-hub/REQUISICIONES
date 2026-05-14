@@ -108,7 +108,8 @@ Commit: `6b7375e` — `feat(ui): migrar requisiciones.php y nueva_requisicion.ph
 
 - Quitar `localStorage.NameUser` de los ~17 JS legacy restantes
   (reemplazar por `window.TF_CONTEXT.user.id` / `.name`).
-- Marcar como deprecated `assets/js/layout_sidebar.js` y `assets/css/main.css`.
+- `assets/js/layout_sidebar.js` retirado en Fase 08 (navbar legacy unificada).
+- Mantener `assets/css/main.css` como legacy temporal hasta completar migracion total a layout v4.
 - Tests automatizados (PHPUnit + Playwright) — diferible.
 - Activar HSTS en produccion — opcional.
 

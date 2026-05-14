@@ -195,10 +195,6 @@ const appKpiDireccion = new Vue({
     },
     created: async function () {
         try {
-            var obraActiva = localStorage.getItem('obraActiva');
-            if (obraActiva) {
-                this.filtros.obraId = String(obraActiva);
-            }
             await this.cargarCatalogos();
         } catch (error) {
             console.error("Error cargando reportes KPI:", error);

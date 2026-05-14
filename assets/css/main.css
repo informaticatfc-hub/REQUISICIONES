@@ -118,8 +118,8 @@ body.sidebar-collapsed .app-sidebar{display:none!important}
 .sidebar-backdrop{position:fixed;inset:0;z-index:150;background:rgba(8,15,29,.48);border:0;opacity:0;pointer-events:none;transition:opacity .18s ease}
 .sidebar-backdrop.is-visible{opacity:1;pointer-events:auto}
 
-body.sidebar-collapsed .app-sidebar{width:var(--sidebar-collapsed-w)}
-body.sidebar-collapsed .app-main{left:var(--sidebar-collapsed-w)!important}
+body.sidebar-collapsed .app-sidebar{display:none!important;width:0!important}
+body.sidebar-collapsed .app-main{left:0!important}
 body.sidebar-collapsed #sidebar>div:first-child{padding:16px 10px 12px!important}
 body.sidebar-collapsed #sidebar>div:first-child .d-flex.flex-row{justify-content:center}
 body.sidebar-collapsed #sidebar>div:first-child .d-flex.align-items-center.me-3{margin-right:0!important}
@@ -149,6 +149,11 @@ body.sidebar-collapsed #sidebar>.dropdown>a{justify-content:center;padding:9px 8
 .legacy-navbar-actions .tf-nav-link.active{background:rgba(37,99,235,.35);border-color:rgba(59,130,246,.45)}
 .legacy-navbar-actions .tf-nav-danger{background:rgba(220,38,38,.18);border-color:rgba(220,38,38,.3)}
 .legacy-navbar-actions .tf-nav-danger:hover{background:rgba(220,38,38,.28)}
+.legacy-actions-menu{min-width:260px;border-radius:12px;border:1px solid var(--border);padding:8px}
+.legacy-action-item{border-radius:8px;padding:.45rem .7rem;font-size:.82rem;font-weight:600;color:var(--text-primary)}
+.legacy-action-item:hover{background:var(--slate-100);color:var(--text-primary)}
+.legacy-navbar-actions-placeholder{display:flex;align-items:center;justify-content:flex-end;min-width:130px}
+.legacy-navbar-role{display:inline-flex;align-items:center;min-height:30px;padding:.2rem .55rem;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);font-size:.72rem;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 
 /* Directivo tables and dense layout */
 .excel-grid{min-width:1000px}
