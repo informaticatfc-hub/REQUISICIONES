@@ -1327,11 +1327,15 @@ const appRequesition = new Vue({
          * Realiza varias peticiones a la base de datos para obtener información.
          * Las peticiones incluyen la lista de obras, la información de la requisición y la información de la obra.
          */
+        var obraId = localStorage.getItem("obraActiva");
+        var reqId = localStorage.getItem("idRequisicion");
+        var hojaId = localStorage.getItem("idHoja");
+        if (!obraId || !reqId) { window.location.href = './index.php'; return; }
         this.listarObras();
-        this.obtenerInfoRequisicion(localStorage.getItem("idRequisicion"));
-        this.obtnerInfoObras(localStorage.getItem("obraActiva"));
-        this.agregarInformacionHoja(localStorage.getItem("idHoja"));
-        this.listarItems(localStorage.getItem("idHoja"));
+        this.obtenerInfoRequisicion(reqId);
+        this.obtnerInfoObras(obraId);
+        this.agregarInformacionHoja(hojaId);
+        this.listarItems(hojaId);
         this.consultarUsuario();
         this.validate = localStorage.getItem("validate");
         /**
