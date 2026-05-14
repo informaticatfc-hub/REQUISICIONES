@@ -13,12 +13,40 @@
 require_once __DIR__ . '/rbac.php';
 require_once __DIR__ . '/conexion.php';
 
+function tf_login_has_column(PDO $conexion, $columnName) {
+    static $cache = [];
+
+    if (array_key_exists($columnName, $cache)) {
+        return $cache[$columnName];
+    }
+
+    try {
+        $stmt = $conexion->prepare(
+            "SELECT COUNT(*)
+               FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'users'
+                AND COLUMN_NAME = ?"
+        );
+        $stmt->execute([$columnName]);
+        $cache[$columnName] = ((int)$stmt->fetchColumn() > 0);
+    } catch (Exception $e) {
+        $cache[$columnName] = false;
+    }
+
+    return $cache[$columnName];
+}
+
 tf_session_start();
 tf_security_headers();
 header('Content-Type: application/json; charset=utf-8');
 
 $objeto   = new Conexion();
 $conexion = $objeto->Conectar();
+
+$hasUserRoleId      = tf_login_has_column($conexion, 'user_role_id');
+$hasUserEstatus     = tf_login_has_column($conexion, 'user_estatus');
+$hasEstadoUsuarioId = tf_login_has_column($conexion, 'id_estado_usuario');
 
 $payload    = json_decode(file_get_contents("php://input"), true) ?: [];
 $Usuario    = isset($payload['user'])     ? trim((string)$payload['user'])     : '';
@@ -35,8 +63,16 @@ if ($Usuario === '' || $Contrasena === '') {
     exit;
 }
 
+$roleSelect = $hasUserRoleId ? '`user_role_id`' : 'NULL AS `user_role_id`';
+$estatusSelect = $hasUserEstatus
+    ? '`user_estatus`'
+    : ($hasEstadoUsuarioId
+        ? "CASE WHEN `id_estado_usuario` IN (2, 4) THEN 'INACTIVO' ELSE 'ACTIVO' END AS `user_estatus`"
+        : "'ACTIVO' AS `user_estatus`");
+
 $consulta = "SELECT `user_id`, `user_nameUser`, `user_password`, `user_directionAcess`,
-                    `user_role_id`, `user_estatus`
+                    $roleSelect,
+                    $estatusSelect
              FROM `users`
              WHERE `user_nameUser` = ?
              LIMIT 1";
@@ -46,7 +82,7 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Defensa contra timing attacks: si no existe el usuario, hacer un hash dummy
 if (!$user) {
-    password_verify($Contrasena, '$2y$10$abcdefghijklmnopqrstuv'); // pseudo-trabajo
+    password_verify($Contrasena, '$2y$10$2b2HqQ4mJm0S0d6Q8rM3Le4F4D0Q0Q4mKx0u4r8rN1M8F3kQY6e5W'); // pseudo-trabajo
     tf_audit_log($conexion, 'login.fail', 'auth', null, "user_not_found:$Usuario");
     echo json_encode($dato, JSON_UNESCAPED_UNICODE);
     $conexion = null;

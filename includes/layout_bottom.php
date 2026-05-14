@@ -74,19 +74,17 @@ $tf_user_id_js     = $tf_user_id_js     ?? '';
     <script src="../assets/lib/jquery/jquery-3.7.1.slim.min.js"></script>
     <?php endif; ?>
 
-    <!-- Bootstrap 5.3.3 bundle (incluye Popper) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-            crossorigin="anonymous"></script>
+    <!-- Bootstrap 5.3.3 local bundle (incluye Popper) -->
+    <script src="../assets/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
 
     <?php if ($tf_use_vue): ?>
-    <!-- Vue 2.x (modo compat para paginas existentes durante la migracion) -->
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.min.js"></script>
+    <!-- Vue 2.x local (modo compat para paginas existentes durante la migracion) -->
+    <script src="../assets/lib/vue/vue.min.js"></script>
     <?php endif; ?>
 
     <?php if ($tf_use_axios): ?>
-    <!-- Axios -->
-    <script src="https://cdn.jsdelivr.net/npm/axios@1.7.2/dist/axios.min.js"></script>
+    <!-- Axios local -->
+    <script src="../assets/lib/axios/axios.min.js"></script>
     <?php endif; ?>
 
     <!-- SweetAlert2 (local) -->
