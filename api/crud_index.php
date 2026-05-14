@@ -19,13 +19,14 @@ switch ($accion) {
         $data = array($currentUser);
         break;
     case 2:
+        $scope = tf_scope_obras_query($conexion, $currentUser);
         if ($modo === 'recientes') {
-            $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' ORDER BY `obras_id` DESC LIMIT " . $limite;
+            $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO'" . $scope['sql'] . " ORDER BY `obras_id` DESC LIMIT " . $limite;
         } else {
-            $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' ORDER BY `obras_nombre`";
+            $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO'" . $scope['sql'] . " ORDER BY `obras_nombre`";
         }
         $resultado = $conexion->prepare($consulta);
-        $resultado->execute();
+        $resultado->execute($scope['params']);
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
 }

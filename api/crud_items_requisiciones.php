@@ -52,8 +52,73 @@ if (in_array($accionInt, $writeActions, true)) {
 
 $currentUser = api_get_current_user($conexion);
 
+function item_requisicion_obtener_obra_id(PDO $conexion, $idHoja)
+{
+    $consulta = "SELECT r.`requisicion_Obra`
+        FROM `hojasrequisicion` h
+        INNER JOIN `requisiciones` r ON r.`requisicion_id` = h.`hojaRequisicion_idReq`
+        WHERE h.`hojaRequisicion_id` = ?
+        LIMIT 1";
+    $resultado = $conexion->prepare($consulta);
+    $resultado->execute(array((int)$idHoja));
+    $obraId = $resultado->fetchColumn();
+
+    return $obraId === false ? null : (int)$obraId;
+}
+
+function item_requisicion_obtener_obra_por_requisicion(PDO $conexion, $idReq)
+{
+    $consulta = "SELECT `requisicion_Obra` FROM `requisiciones` WHERE `requisicion_id` = ? LIMIT 1";
+    $resultado = $conexion->prepare($consulta);
+    $resultado->execute(array((int)$idReq));
+    $obraId = $resultado->fetchColumn();
+
+    return $obraId === false ? null : (int)$obraId;
+}
+
+function item_requisicion_obtener_obra_por_presion(PDO $conexion, $idPresion)
+{
+    $consulta = "SELECT `presiones_obra` FROM `presiones` WHERE `presiones_id` = ? LIMIT 1";
+    $resultado = $conexion->prepare($consulta);
+    $resultado->execute(array((int)$idPresion));
+    $obraId = $resultado->fetchColumn();
+
+    return $obraId === false ? null : (int)$obraId;
+}
+
+function item_requisicion_validar_hoja(PDO $conexion, $idHoja, $currentUser)
+{
+    $obraId = item_requisicion_obtener_obra_id($conexion, $idHoja);
+    if ($obraId === null) {
+        tf_abort(404, 'Hoja no encontrada');
+    }
+
+    return tf_require_obra_access($conexion, $obraId, $currentUser);
+}
+
+function item_requisicion_validar_requisicion(PDO $conexion, $idReq, $currentUser)
+{
+    $obraId = item_requisicion_obtener_obra_por_requisicion($conexion, $idReq);
+    if ($obraId === null) {
+        tf_abort(404, 'Requisicion no encontrada');
+    }
+
+    return tf_require_obra_access($conexion, $obraId, $currentUser);
+}
+
+function item_requisicion_validar_presion(PDO $conexion, $idPresion, $currentUser)
+{
+    $obraId = item_requisicion_obtener_obra_por_presion($conexion, $idPresion);
+    if ($obraId === null) {
+        tf_abort(404, 'Presion no encontrada');
+    }
+
+    return tf_require_obra_access($conexion, $obraId, $currentUser);
+}
+
 switch ($accion) {
     case 1:
+        item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
         $consulta = "SELECT `itemRequisicion_id`, `itemRequisicion_unidad`, `itemRequisicion_producto`, `itemRequisicion_iva`, `itemRequisicion_retenciones`, `itemRequisicion_banderaFlete`, `itemRequisicion_banderaFisica`, `itemRequisicion_banderaResico`, `itemRequisicion_banderaISR`, `itemRequisicion_precio`, `itemRequisicion_cantidad`, `itemRequisicion_estatus`, `hojaRequisicion_total` FROM itemrequisicion INNER JOIN hojasrequisicion ON itemRequisicion_idHoja = hojasrequisicion.hojaRequisicion_id WHERE itemRequisicion_idHoja = :id_hoja ORDER BY itemRequisicion_id ASC";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':id_hoja', (int)$idHoja, PDO::PARAM_INT);
@@ -64,6 +129,7 @@ switch ($accion) {
         $data = array($currentUser);
         break;
     case 3:
+        item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
         $consulta = "UPDATE `itemrequisicion` SET `itemRequisicion_unidad`=:unidad, `itemRequisicion_producto`=:producto, `itemRequisicion_iva`=:iva, `itemRequisicion_retenciones`=:retenciones, `itemRequisicion_banderaFlete`=:banderaFlete, `itemRequisicion_banderaFisica`=:banderaFisica, `itemRequisicion_banderaResico`=:banderaResico, `itemRequisicion_banderaISR`=:banderaISR, `itemRequisicion_precio`=:precio, `itemRequisicion_cantidad`=:cantidad WHERE `itemRequisicion_id` = :id";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':unidad', $unidad, PDO::PARAM_STR);
@@ -87,6 +153,7 @@ switch ($accion) {
         ));
         break;
     case 4:
+        item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
         $consulta = "DELETE FROM `itemrequisicion` WHERE `itemRequisicion_id` = :id";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':id', (int)$id, PDO::PARAM_INT);
@@ -97,6 +164,7 @@ switch ($accion) {
         ));
         break;
     case 5:
+        item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
         $consulta = "SELECT * FROM `hojasrequisicion` INNER JOIN emisores ON hojasrequisicion.hojaRequisicion_empresa = emisores.emisor_id INNER JOIN provedores ON hojasrequisicion.hojaRequisicion_proveedor = provedores.proveedor_id WHERE hojaRequisicion_id = :id_hoja";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':id_hoja', (int)$idHoja, PDO::PARAM_INT);
@@ -104,6 +172,7 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 6:
+        item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
         $consulta = "INSERT INTO `itemrequisicion` (`itemRequisicion_id`, `itemRequisicion_idHoja`, `itemRequisicion_unidad`, `itemRequisicion_producto`, `itemRequisicion_iva`, `itemRequisicion_retenciones`, `itemRequisicion_banderaFlete`, `itemRequisicion_banderaFisica`, `itemRequisicion_banderaResico`, `itemRequisicion_banderaISR`, `itemRequisicion_precio`, `itemRequisicion_cantidad`, `itemRequisicion_estatus`) VALUES (NULL, :id_hoja, :unidad, :producto, :iva, :retenciones, :banderaFlete, :banderaFisica, :banderaResico, :banderaISR, :precio, :cantidad, 'N')";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':id_hoja', (int)$idHoja, PDO::PARAM_INT);
@@ -128,6 +197,7 @@ switch ($accion) {
         ));
         break;
     case 7:
+        item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
         $consulta =  "
             UPDATE hojasrequisicion
             SET hojaRequisicion_estatus       = :estatus,
@@ -147,11 +217,14 @@ switch ($accion) {
     case 8:
         $consulta = "SELECT `obras_nombre`,`ciudadesObras_nombre` FROM `obras` JOIN estadosobra ON estadosobra.ciudadesObras_id = obras.obras_cuidad WHERE `obras_id` = :obra";
         $resultado = $conexion->prepare($consulta);
-        $resultado->bindValue(':obra', (int)$obra, PDO::PARAM_INT);
+        $obraId = api_require_positive_int($obra, 'Obra invalida');
+        tf_require_obra_access($conexion, $obraId, $currentUser);
+        $resultado->bindValue(':obra', $obraId, PDO::PARAM_INT);
         $resultado->execute();
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 9:
+        item_requisicion_validar_requisicion($conexion, $idReq, $currentUser);
         $consulta = "SELECT `requisicion_Clave`, `requisicion_Numero` FROM `requisiciones` WHERE `requisicion_id` = :id_req";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':id_req', (int)$idReq, PDO::PARAM_INT);
@@ -159,12 +232,26 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 10:
-        $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' ORDER BY `obras_nombre`";
-        $resultado = $conexion->prepare($consulta);
-        $resultado->execute();
+        if (tf_user_can_view_all_obras($currentUser)) {
+            $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' ORDER BY `obras_nombre`";
+            $resultado = $conexion->prepare($consulta);
+            $resultado->execute();
+        } else {
+            $obraAsignada = tf_user_assigned_obra_id($currentUser);
+            if ($obraAsignada === null) {
+                $data = array();
+                break;
+            }
+            $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' AND `obras_id` = ? ORDER BY `obras_nombre`";
+            $resultado = $conexion->prepare($consulta);
+            $resultado->execute(array($obraAsignada));
+        }
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 11:
+        item_requisicion_validar_presion($conexion, $idPresion, $currentUser);
+        item_requisicion_validar_requisicion($conexion, $idReq, $currentUser);
+        item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
         try {
             // Inicia transacción
             $conexion->beginTransaction();
@@ -241,6 +328,7 @@ switch ($accion) {
         }
         break;
     case 12:
+        item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
         $consulta = "UPDATE `hojasrequisicion` SET `hojaRequisicion_estatus` = 'PENDIENTE', `hojarequisicion_comentariosValidacion` = :comentarios WHERE `hojasrequisicion`.`hojaRequisicion_id` = :id_hoja";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':comentarios', $comentarios, PDO::PARAM_STR);
@@ -251,6 +339,7 @@ switch ($accion) {
         ));
         break;
     case 13:
+        item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
         try {
             // Iniciar transacción
             $conexion->beginTransaction();
@@ -335,6 +424,7 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 15:
+        item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
         $consulta = "UPDATE `hojasrequisicion` 
                         SET `hojaRequisicion_proveedor` = :id_prov 
                         WHERE `hojaRequisicion_id` = :id_hoja";

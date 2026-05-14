@@ -280,11 +280,10 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
                             <div v-bind:id="'collapse'+ quitarEspacios(obra.Nombre_Obra)" class="'accordion-collapse collapse ' + obra.colapse_show" data-bs-parent="#accordionExample">
                                 <div class="accordion-body">
                                     <div class="row g-2 align-items-end mb-3">
-                                        <div class="col-lg-12 d-flex gap-2 justify-content-lg-end">
-                                            <span class="chip-count" title="Filas editadas">{{(obra.Presion_Obra || []).filter(function(row){ return !!row._dirty; }).length}}</span>
-                                            <button type="button" class="btn btn-secondary" @click="mostrarAyudaRapida()">Ayuda</button>
-                                        </div>
-                                        <div class="col-12">
+                                                        <div class="col-lg-12 d-flex gap-2 justify-content-lg-end">
+                                                            <span class="chip-count" title="Filas editadas">{{(obra.Presion_Obra || []).filter(function(row){ return !!row._dirty; }).length}}</span>
+                                                        </div>
+                                                        <div class="col-12">
                                             <div class="totals-mini-grid">
                                                 <div class="totals-mini-card">
                                                     <div class="lbl">Total Propuesto</div>
@@ -318,11 +317,6 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
                                                 <button class="btn btn-secondary" type="button" @click="triggerImportExcel(index)">Importar Excel</button>
                                                 <input type="file" :id="'excelImport'+index" accept=".xlsx,.xls" class="d-none" @change="importarExcelObra($event,index)">
                                             </div>
-                                            <div class="excel-toolbar">
-                                                <div class="excel-name-box">{{selectedCellLabel || 'Sin celda seleccionada'}}</div>
-                                                <input type="text" class="form-control excel-formula-input" placeholder="Barra de formula: =SUM(ADEUDO,100), =IF(AUT>ADEUDO,ADEUDO,AUT)" v-model="formulaBar" @keyup.enter="aplicarFormulaBarra(index)">
-                                                <button class="btn btn-primary" type="button" @click="aplicarFormulaBarra(index)">Aplicar</button>
-                                            </div>
                                             <div class="excel-table-wrap">
                                             <table class="table table-prof excel-grid align-middle w-100">
                                                 <thead class="table-dark">
@@ -333,7 +327,6 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
                                                         <th scope="col" class="fs-6">CONCEPTO</th>
                                                         <th scope="col" class="fs-6">ADEUDO</th>
                                                         <th scope="col" class="fs-6">PAGO AUTORIZADO</th>
-                                                        <th scope="col" class="fs-6">FORMULA</th>
                                                         <th scope="col" class="fs-6">OBSERVACIONES</th>
                                                         <th scope="col" class="fs-6">FORMA DE PAGO</th>                                                    
                                                     </tr>
@@ -351,13 +344,6 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
                                                                 <input type="text" class="form-control excel-cell-input" aria-describedby="adeudo" v-model="presionObra.adeudo" @focus="selectCell(index,indice,'AUT')" @input="onRowInput(index,indice,presionObra)" @blur="normalizarAdeudo(index,indice)" @paste="pegarRangoAdeudo($event,index,indice)" @keydown="onCellKeydown($event,index,indice)">
                                                                 <button class="btn btn-secondary" type="button" @click="openWinPorcentaje(index,indice)" id="button-addon1">%</button>
                                                             </div>
-                                                        </td>
-                                                        <td class="formula-cell">
-                                                            <div class="input-group mb-2">
-                                                                <span class="input-group-text">fx</span>
-                                                                <input type="text" class="form-control excel-cell-input" placeholder="=MIN(ADEUDO,5000)" v-model="presionObra.formula" @focus="selectCell(index,indice,'FX')" @input="onRowInput(index,indice,presionObra)" @keyup.enter="aplicarFormulaFila(index,indice)">
-                                                            </div>
-                                                            <button class="btn btn-sm btn-primary" type="button" @click="aplicarFormulaFila(index,indice)">Aplicar</button>
                                                         </td>
                                                         <td :class="presionObra.atrClass" :style="presionObra.strStyle">
                                                             <div>
@@ -404,7 +390,7 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <!-- scripts constume-->
-    <script src="../assets/js/all_presiones.js?v=fase07e"></script>
+    <script src="../assets/js/all_presiones.js?v=fase07f"></script>
     <script src="../assets/js/layout_sidebar.js?v=fase07b"></script>
 </body>
 

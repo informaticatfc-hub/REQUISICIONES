@@ -21,6 +21,7 @@ START TRANSACTION;
 ALTER TABLE `users`
     ADD COLUMN IF NOT EXISTS `user_role_id`   INT UNSIGNED NULL AFTER `user_directionAcess`,
     ADD COLUMN IF NOT EXISTS `user_email`     VARCHAR(120) NULL AFTER `user_role_id`,
+    ADD COLUMN IF NOT EXISTS `user_obra_id`   INT UNSIGNED NULL AFTER `user_email`,
     ADD COLUMN IF NOT EXISTS `user_estatus`   ENUM('ACTIVO','INACTIVO') NOT NULL DEFAULT 'ACTIVO' AFTER `user_email`,
     ADD COLUMN IF NOT EXISTS `user_lastLogin` TIMESTAMP NULL DEFAULT NULL AFTER `user_estatus`;
 
@@ -91,6 +92,29 @@ SET @sql := IF(
     'SELECT 1'
 );
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @obra_fk_exists := (
+    SELECT COUNT(*)
+    FROM information_schema.TABLE_CONSTRAINTS
+    WHERE CONSTRAINT_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'users'
+      AND CONSTRAINT_NAME = 'fk_users_obra'
+);
+
+SET @invalid_obra_refs := (
+    SELECT COUNT(*)
+    FROM `users` u
+    LEFT JOIN `obras` o ON o.obras_id = u.user_obra_id
+    WHERE u.user_obra_id IS NOT NULL
+      AND o.obras_id IS NULL
+);
+
+SET @obra_fk_sql := IF(
+    @obra_fk_exists = 0 AND @invalid_obra_refs = 0,
+    'ALTER TABLE `users` ADD CONSTRAINT `fk_users_obra` FOREIGN KEY (`user_obra_id`) REFERENCES `obras`(`obras_id`) ON DELETE SET NULL',
+    'SELECT 1'
+);
+PREPARE stmt FROM @obra_fk_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ------------------------------------------------------------
 -- 3) Catalogos RBAC (solo insercion faltante, sin sobrescribir)
