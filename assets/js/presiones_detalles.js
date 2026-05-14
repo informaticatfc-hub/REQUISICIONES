@@ -300,12 +300,15 @@ const appRequesition = new Vue({
         }
     },
     mounted: async function () {
+        var obraId = localStorage.getItem("obraActiva");
+        var presionId = localStorage.getItem("IdPresion");
+        if (!obraId || !presionId) { window.location.href = './index.php'; return; }
         await this.listarObras();
         await this.asignarDiaySamana();
-        await this.infoObraActiva(localStorage.getItem("obraActiva"));
+        await this.infoObraActiva(obraId);
         await this.consultarUsuario();
-        await this.consultarEstatus(localStorage.getItem("IdPresion"));
-        await this.cargarDatosPresion(localStorage.getItem("IdPresion"));
+        await this.consultarEstatus(presionId);
+        await this.cargarDatosPresion(presionId);
     },
     computed: {
 

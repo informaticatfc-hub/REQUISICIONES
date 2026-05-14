@@ -370,10 +370,12 @@ const appRequesition = new Vue({
         }
     },
     mounted: async function () {
+        var obraId = localStorage.getItem("obraActiva");
+        if (!obraId) { window.location.href = './index.php'; return; }
         await this.listarObras();
         await this.consultarUsuario();
-        await this.infoObraActiva(localStorage.getItem("obraActiva"));
-        await this.listarRequisiciones(localStorage.getItem("obraActiva"));
+        await this.infoObraActiva(obraId);
+        await this.listarRequisiciones(obraId);
     },
     computed: {
 

@@ -51,8 +51,10 @@ const appRequesition = new Vue({
         }
     },
     created: function () {
+        var obraId = localStorage.getItem("obraActiva");
+        if (!obraId) { window.location.href = './index.php'; return; }
         this.listarObras();
-        this.infoObraActiva(localStorage.getItem("obraActiva"));
+        this.infoObraActiva(obraId);
         this.consultarUsuario();
     },
     computed: {

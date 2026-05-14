@@ -45,7 +45,7 @@ include_once '../validarSesion.php';
             <hr>
             <div id="sideBarItem" class="mb-auto overflow-auto page-content">
                 <ul class="nav nav-pills flex-column f-5" id="v-pills-tab" role="tablist" aria-orientation="vertical">
-                    <li v-if="this.users[0].user_directionAcess == 1">
+                    <li v-if="users.length && users[0].user_directionAcess == 1">
                         <a href="#" class="nav-link text-white" id="v-pills-reports-tab" data-bs-toggle="pill" data-bs-target="#v-pills-reports" type="button" role="tab" aria-controls="v-pills-reports" aria-selected="false" @click="irDireecion">
                             <img class="me-2" src="../images/icons/ceo.svg" alt="user-icon" height="24" width="24">
                             DIRECCION
@@ -97,14 +97,14 @@ include_once '../validarSesion.php';
                     </li>
                     <li class="breadcrumb-item"><a href="./obras.php"><span>Menu de Obra</span></a></li>
                     <li class="breadcrumb-item"><a href="./presiones.php"><span>Presiones de Obra</span></a></li>
-                    <li class="breadcrumb-item active" aria-current="page"><span>Presion de la Semana {{this.semana}} y del dia {{this.dia}} de la obra {{this.obraActiva[0].obras_nombre}}</span></li>
+                    <li class="breadcrumb-item active" aria-current="page"><span>Presion de la Semana {{semana}} y del dia {{dia}} de la obra {{obraActiva.length ? obraActiva[0].obras_nombre : ''}}</span></li>
                 </ol>
             </nav>
             <div class="container page-shell overflow-auto page-content">
                 <div class="page-hdr">
                     <div class="page-hdr-left">
                         <h2 class="page-title">Presion &mdash; Semana {{this.semana}} / Dia {{this.dia}}</h2>
-                        <p class="page-lead">Detalle de la presion de pago de la obra {{this.obraActiva[0].obras_nombre}}.</p>
+                        <p class="page-lead">Detalle de la presion de pago de la obra {{obraActiva.length ? obraActiva[0].obras_nombre : ''}}.</p>
                         <div class="obras-chip mt-2">
                             <span class="obras-chip-dot"></span>
                             Detalle de presion
@@ -125,7 +125,7 @@ include_once '../validarSesion.php';
                     </div>
                     <div class="quick-tile">
                         <span class="quick-tile-label">Obra</span>
-                        <span class="quick-tile-value small">{{this.obraActiva[0].obras_nombre}}</span>
+                        <span class="quick-tile-value small">{{obraActiva.length ? obraActiva[0].obras_nombre : ''}}</span>
                     </div>
                 </div>
                 <div class="table-wrapper">
@@ -192,15 +192,14 @@ include_once '../validarSesion.php';
         </div>
     </div>
     <!--scripts de bootstrap, poppers y jquery-->
-    <script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/@popperjs/core@2/dist/umd/popper.js"></script>
-    <script src="../assets/lib/bootstrap/js/bootstrap.min.js"></script>
+    <script src="../assets/lib/jquery/jquery-3.7.1.slim.min.js"></script>
+    <script src="../assets/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
 
     <!-- scripts de vue.js-->
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js"></script>
+    <script src="../assets/lib/vue/vue.min.js"></script>
 
     <!--Script de axios-->
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="../assets/lib/axios/axios.min.js"></script>
 
     <!--scripts de sweetalert-->
     <script src="../assets/lib/sweetalert/sweetalert2.min.js"></script>
