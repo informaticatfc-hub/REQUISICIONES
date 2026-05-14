@@ -1,9 +1,5 @@
 <?php
-header("Content-Type: application/xls");
-header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; charset=UTF-8');
-header("Content-Disposition: attachment; filename=Presion_de Gastos_" . date('Y:m:d:m:s') . ".xls");
-header("Pragma: no-cache");
-header("Expires: 0");
+header('Content-Type: application/json; charset=UTF-8');
 include_once 'conexion.php';
 include_once 'auth.php';
 $objeto = new Conexion();
@@ -33,15 +29,13 @@ $output = "";
 $textExpecial = "";
 
 // --- RBAC + CSRF (Fase 3) ---
-// case 5 = marcar PAGADA, case 7 = cerrar presion (AUTORIZADO), case 6 = export Excel.
+// case 5 = marcar PAGADA, case 7 = cerrar presion (AUTORIZADO).
 // El resto son lecturas para construir la vista de detalle.
 $accionInt = (int)$accion;
 $writeActions = array(5, 7);
 if (in_array($accionInt, $writeActions, true)) {
     api_require_csrf($_POST);
     tf_require_permission($conexion, 'presiones.authorize');
-} elseif ($accionInt === 6) {
-    tf_require_permission($conexion, 'presiones.view');
 } else {
     tf_require_permission($conexion, 'presiones.view');
 }
@@ -124,82 +118,10 @@ switch ($accion) {
         ));
         break;
     case 6:
-        if (isset($_POST["export"])) {
-            $textExpecial .= '
-                <table border="1">
-                    <thead>
-                        <tr bgcolor="orange">
-                            <th colspan="12">PRESION OBRA: ' . $NombrePress . ' (' . date('d/m/Y') . ')</th>
-                        </tr>
-                    </thead>
-                    <thead>
-                        <tr bgcolor="yellow">
-                            <th>CLAVE</th>
-                            <th>NUMERO DE REQUISICION</th>
-                            <th>NOMBRE DE REQUISICION</th> <th>PROVEEDOR</th>
-                            <th>CONCEPTO</th>
-                            <th>ADEUDO</th>
-                            <th>PAGO PROGRAMADO</th>
-                            <th>NETO</th>
-                            <th>OBSERVACIONES</th>
-                            <th>FORMA DE PAGO</th>
-                            <th>FECHA DE PAGO</th>
-                            <th>BANCO DE PAGO</th>
-                        </tr>
-                    </thead>';
-            $textExpecial .= "<tbody>";
-            $indexAct = 0;
-            $indexNext = 1;
-            foreach ($DatosExport as $datosExcel) {
-                if ($indexAct == 0) {
-                    $textExpecial .= '<tr bgcolor="Silver"><th colspan="12">' . putNameSection($datosExcel['clave']) . "</th></tr>";
-                }
-                ;
-                
-                // Preparamos el estilo de color si es Efectivo
-                $colorStyle = ($datosExcel['formaPago'] == 'Efec') ? ' style="color: red;"' : '';
-                
-                // Generamos la fila
-                $textExpecial .= '
-                     <tr' . $colorStyle . '>
-                       <th>' . $datosExcel['clave'] . '</th>
-                        <th>' . $datosExcel['NumReq'] . '</th>
-                        <th>' . (isset($datosExcel['nombreReq']) ? $datosExcel['nombreReq'] : '') . '</th> <th>' . $datosExcel['proveedor'] . '</th>
-                        <th>' . $datosExcel['concepto'] . '</th>
-                        <th>' . formatearMoneda($datosExcel['total']) . '</th>
-                        <th>  </th>
-                        <th>' . formatearMoneda($datosExcel['adeudo']) . '</th>
-                        <th>' . $datosExcel['Observaciones'] . '</th>
-                        <th>' . $datosExcel['formaPago'] . '</th>
-                        <th> </th>
-                        <th>' . $datosExcel['Banco'] . '</th>
-                    </tr>
-                ';
-                
-                if ($indexNext < count($DatosExport)) {
-                    if ($DatosExport[$indexAct]['clave'] != $DatosExport[$indexNext]['clave']) {
-                        $textExpecial .= '<tr bgcolor="Silver"><th colspan="12">' . putNameSection($DatosExport[$indexNext]['clave']) . "</th></tr>";
-                    }
-                    ;
-                }
-                $indexAct++;
-                $indexNext++;
-            }
-            $textExpecial .= '<tr bgcolor="yellow">
-                            <th colspan="5" style="text-align: right;">GRAN TOTAL ' . $NombrePress . "</th>
-                            <th> " . formatearMoneda($total) . " </th>
-                            <th>  </th>
-                            <th> " . formatearMoneda($adeudo) . " </th>
-                            <th>  </th>
-                            <th>  </th>
-                            <th>  </th>
-                            <th>  </th>
-                        </tr>";
-            $textExpecial .= "</tbody></table>";
-            $output = mb_convert_encoding($textExpecial, 'UTF-8', 'auto');
-            echo $output;
-            $data = "PRESION GENERADA DESDE EL SISTEMA THE FUENTES WS";
-        }
+        $data = array(
+            'status' => 'deprecated',
+            'mensaje' => 'La exportacion Excel se genera en frontend con .xlsx (SheetJS).'
+        );
         break;
     case 7:
         $conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

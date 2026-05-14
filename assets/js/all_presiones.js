@@ -563,39 +563,41 @@ const appRequesition = new Vue({
             URL.revokeObjectURL(link.href);
         },
         exportarExcelObra: function (indicePresion) {
+            if (!window.XLSX || !window.XLSX.utils) {
+                Swal.fire('Excel no disponible', 'No fue posible cargar la libreria para exportar .xlsx.', 'warning');
+                return;
+            }
+
             var obra = this.presiones[indicePresion];
             var rows = obra.Presion_Obra || [];
-            var headers = ['CLAVE', 'NUM_REQ', 'PROVEEDOR', 'CONCEPTO', 'ADEUDO_PROPUESTO', 'PAGO_AUTORIZADO', 'OBSERVACIONES', 'FORMA_PAGO'];
-            var html = [];
-            html.push('<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr>');
-            headers.forEach(function (h) { html.push('<th>' + h + '</th>'); });
-            html.push('</tr></thead><tbody>');
-            rows.forEach((row) => {
-                html.push('<tr>');
-                html.push('<td>' + String(row.clave || '') + '</td>');
-                html.push('<td>' + String(row.NumReq || '') + '</td>');
-                html.push('<td>' + String(row.proveedor || '') + '</td>');
-                html.push('<td>' + String(row.concepto || '') + '</td>');
-                html.push('<td>' + this.toNumber(row.total) + '</td>');
-                html.push('<td>' + this.toNumber(row.adeudo) + '</td>');
-                html.push('<td>' + String(row.Observaciones || '') + '</td>');
-                html.push('<td>' + String(row.formaPago || '') + '</td>');
-                html.push('</tr>');
+            var data = rows.map((row) => {
+                return {
+                    CLAVE: row.clave || '',
+                    NUM_REQ: row.NumReq || '',
+                    PROVEEDOR: row.proveedor || '',
+                    CONCEPTO: row.concepto || '',
+                    ADEUDO_PROPUESTO: this.toNumber(row.total),
+                    PAGO_AUTORIZADO: this.toNumber(row.adeudo),
+                    OBSERVACIONES: row.Observaciones || '',
+                    FORMA_PAGO: row.formaPago || ''
+                };
             });
-            html.push('</tbody></table></body></html>');
 
-            var blob = new Blob([html.join('')], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-            var link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'autorizacion_' + (obra.Nombre_Obra || 'obra').replace(/\s+/g, '_') + '.xls';
-            link.click();
-            URL.revokeObjectURL(link.href);
+            var ws = XLSX.utils.json_to_sheet(data);
+            var wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Autorizacion');
+            XLSX.writeFile(wb, 'autorizacion_' + (obra.Nombre_Obra || 'obra').replace(/\s+/g, '_') + '.xlsx');
         },
         triggerImportExcel: function (indicePresion) {
             var input = document.getElementById('excelImport' + indicePresion);
             if (input) input.click();
         },
         importarExcelObra: function (event, indicePresion) {
+            if (!window.XLSX || !window.XLSX.utils) {
+                Swal.fire('Excel no disponible', 'No fue posible cargar la libreria para importar .xlsx.', 'warning');
+                return;
+            }
+
             var file = event.target.files && event.target.files[0];
             if (!file) return;
 
@@ -605,10 +607,11 @@ const appRequesition = new Vue({
             var reader = new FileReader();
             reader.onload = (e) => {
                 try {
-                    var text = new TextDecoder('utf-8').decode(e.target.result);
                     var imported = [];
+                    var fileName = (file.name || '').toLowerCase();
 
-                    if (file.name.toLowerCase().endsWith('.csv')) {
+                    if (fileName.endsWith('.csv')) {
+                        var text = new TextDecoder('utf-8').decode(e.target.result);
                         var lines = text.split(/\r?\n/).filter(function (line) { return line.trim() !== ''; });
                         if (lines.length < 2) throw new Error('Archivo CSV sin datos.');
                         var headers = lines[0].split(',').map(function (h) { return h.trim().replace(/^"|"$/g, ''); });
@@ -621,20 +624,13 @@ const appRequesition = new Vue({
                             imported.push(rowObj);
                         }
                     } else {
-                        var parser = new DOMParser();
-                        var doc = parser.parseFromString(text, 'text/html');
-                        var trs = Array.from(doc.querySelectorAll('table tr'));
-                        if (trs.length < 2) throw new Error('Archivo Excel/HTML sin datos.');
-                        var headers = Array.from(trs[0].querySelectorAll('th,td')).map(function (cell) { return cell.textContent.trim(); });
-                        for (var j = 1; j < trs.length; j++) {
-                            var cells = Array.from(trs[j].querySelectorAll('td'));
-                            if (!cells.length) continue;
-                            var rowObj = {};
-                            headers.forEach(function (h, idx) {
-                                rowObj[h] = (cells[idx] ? cells[idx].textContent : '').trim();
-                            });
-                            imported.push(rowObj);
+                        var wb = XLSX.read(e.target.result, { type: 'array' });
+                        var sheetName = wb.SheetNames[0];
+                        if (!sheetName) {
+                            throw new Error('El archivo no contiene hojas de calculo.');
                         }
+                        var ws = wb.Sheets[sheetName];
+                        imported = XLSX.utils.sheet_to_json(ws, { defval: '' });
                     }
 
                     var byKey = {};
@@ -650,7 +646,6 @@ const appRequesition = new Vue({
                         var target = byKey[key];
                         var pago = this.toNumber(item.PAGO_AUTORIZADO);
                         target.adeudo = pago;
-                        target.formula = String(item.FORMULA || target.formula || '');
                         target.Observaciones = String(item.OBSERVACIONES || target.Observaciones || '');
                         this.marcarFilaEditada(target);
                         applied += 1;

@@ -194,10 +194,6 @@ const appRequesition = new Vue({
         await this.consultarUsuario();
         var obraId = localStorage.getItem("obraActiva");
         var reqId = localStorage.getItem("idRequisicion");
-        if (!obraId && this.users.length && this.users[0].user_obra_id) {
-            obraId = this.users[0].user_obra_id;
-            localStorage.setItem("obraActiva", obraId);
-        }
         if (!obraId) { window.location.href = './obras.php'; return; }
         await this.listarObras();
         await this.infoObraActiva(obraId);

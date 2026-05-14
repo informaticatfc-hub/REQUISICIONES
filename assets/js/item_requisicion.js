@@ -1331,10 +1331,6 @@ const appRequesition = new Vue({
         var reqId = localStorage.getItem("idRequisicion");
         var hojaId = localStorage.getItem("idHoja");
         await this.consultarUsuario();
-        if (!obraId && this.users && this.users.length && this.users[0].user_obra_id) {
-            obraId = this.users[0].user_obra_id;
-            localStorage.setItem("obraActiva", obraId);
-        }
         if (!obraId || !reqId) { window.location.href = './obras.php'; return; }
         this.listarObras();
         this.obtenerInfoRequisicion(reqId);

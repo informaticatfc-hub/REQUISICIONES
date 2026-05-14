@@ -187,7 +187,6 @@ include_once '../validarSesion.php';
 
     <!-- scripts constume-->
     <script src="../assets/js/bancos.js"></script>
-    <script src="../assets/js/layout_sidebar.js?v=fase07b"></script>
 </body>
 
 </html>

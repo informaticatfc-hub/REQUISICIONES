@@ -123,35 +123,18 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
                 <div class="page-hdr">
                     <div class="page-hdr-left">
                         <h2 class="page-title">Direccion</h2>
-                        <p class="page-lead">Selecciona primero la obra activa; despues podras ejecutar movimientos de requisiciones y presiones.</p>
-                    </div>
-                </div>
-                <div class="table-wrapper p-3 mb-3">
-                    <div class="row g-2 align-items-end">
-                        <div class="col-lg-8">
-                            <label class="form-label">Obra activa para flujo de trabajo</label>
-                            <select class="form-select" v-model="selectedObraId">
-                                <option value="">Selecciona una obra</option>
-                                <option v-for="obra in obrasLista" :key="obra.obras_id" :value="String(obra.obras_id)">{{obra.obras_nombre}}</option>
-                            </select>
-                        </div>
-                        <div class="col-lg-4 d-grid">
-                            <button type="button" class="btn btn-primary" @click="seleccionarObraActiva">Confirmar obra activa</button>
-                        </div>
-                        <div class="col-12" v-if="selectedObraNombre">
-                            <small class="text-success fw-semibold">Obra activa: {{selectedObraNombre}}</small>
-                        </div>
+                        <p class="page-lead">Panel directivo para autorizaciones y reportes globales. No requiere seleccion manual de obra.</p>
                     </div>
                 </div>
                 <div class="module-grid">
-                    <button type="button" class="module-card" @click="enterAllPresiones" :disabled="!selectedObraId">
+                    <button type="button" class="module-card" @click="enterAllPresiones">
                         <div class="module-card-icon">
                             <img src="../images/icons/requisiciones.svg" alt="presiones">
                         </div>
                         <span class="module-card-label">Autorizacion Presiones</span>
                         <span class="module-card-sub">Gestion operativa para aprobar, rechazar y ajustar pagos por obra</span>
                     </button>
-                    <button type="button" class="module-card" @click="enterReportesKpi" :disabled="!selectedObraId">
+                    <button type="button" class="module-card" @click="enterReportesKpi">
                         <div class="module-card-icon">
                             <img src="../images/icons/obras.svg" alt="reportes-kpi">
                         </div>
@@ -176,8 +159,7 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
     <script src="../assets/lib/sweetalert/sweetalert2.min.js"></script>
 
     <!-- scripts constume-->
-    <script src="../assets/js/direccion.js?v=fase07d"></script>
-    <script src="../assets/js/layout_sidebar.js?v=fase07b"></script>
+    <script src="../assets/js/direccion.js?v=fase08a"></script>
 </body>
 
 </html>
