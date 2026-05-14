@@ -204,6 +204,82 @@ if (!defined('TF_RBAC_LOADED')) {
         return $cached;
     }
 
+    function tf_user_can_view_all_obras(array $user = null) {
+        if ($user === null) {
+            return false;
+        }
+
+        $roleCode = $user['role']['code'] ?? '';
+        if (in_array($roleCode, ['admin', 'director'], true)) {
+            return true;
+        }
+
+        return (int)($user['user_directionAcess'] ?? 0) === 1;
+    }
+
+    function tf_user_assigned_obra_id(array $user = null) {
+        if ($user === null) {
+            return null;
+        }
+
+        $obraId = $user['user_obra_id'] ?? $user['obra_id'] ?? $user['id_obra'] ?? null;
+        $obraId = filter_var($obraId, FILTER_VALIDATE_INT, array(
+            'options' => array('min_range' => 1),
+        ));
+
+        return $obraId === false ? null : (int)$obraId;
+    }
+
+    function tf_require_obra_access(PDO $pdo, $obraId, $user = null) {
+        $user = $user ?? tf_current_user($pdo);
+        $obraId = filter_var($obraId, FILTER_VALIDATE_INT, array(
+            'options' => array('min_range' => 1),
+        ));
+
+        if ($obraId === false) {
+            tf_abort(422, 'Obra invalida');
+        }
+
+        if (tf_user_can_view_all_obras($user)) {
+            return (int)$obraId;
+        }
+
+        $assignedObraId = tf_user_assigned_obra_id($user);
+        if ($assignedObraId === null) {
+            tf_abort(403, 'No tienes una obra asignada');
+        }
+
+        if ((int)$obraId !== (int)$assignedObraId) {
+            tf_abort(403, 'No tienes acceso a esta obra');
+        }
+
+        return (int)$obraId;
+    }
+
+    function tf_scope_obras_query(PDO $pdo, array $user = null) {
+        $user = $user ?? tf_current_user($pdo);
+
+        if (tf_user_can_view_all_obras($user)) {
+            return array(
+                'sql' => '',
+                'params' => array(),
+            );
+        }
+
+        $assignedObraId = tf_user_assigned_obra_id($user);
+        if ($assignedObraId === null) {
+            return array(
+                'sql' => ' AND 1 = 0',
+                'params' => array(),
+            );
+        }
+
+        return array(
+            'sql' => ' AND `obras_id` = ?',
+            'params' => array($assignedObraId),
+        );
+    }
+
     function tf_rbac_tables_exist(PDO $pdo) {
         static $cache = null;
         if ($cache !== null) return $cache;

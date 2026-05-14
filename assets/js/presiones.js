@@ -228,12 +228,16 @@ const appRequesition = new Vue({
         }
     },
     mounted: async function () {
-           var obraId = localStorage.getItem("obraActiva");
-           if (!obraId) { window.location.href = './index.php'; return; }
-           await this.listarObras();
-           await this.consultarUsuario();
-           await this.infoObraActiva(obraId);
-           await this.listarPresiones(obraId);
+            await this.consultarUsuario();
+            var obraId = localStorage.getItem("obraActiva");
+            if (!obraId && this.users.length && this.users[0].user_obra_id) {
+             obraId = this.users[0].user_obra_id;
+             localStorage.setItem("obraActiva", obraId);
+            }
+            if (!obraId) { window.location.href = './obras.php'; return; }
+            await this.listarObras();
+            await this.infoObraActiva(obraId);
+            await this.listarPresiones(obraId);
     },
     computed: {
 

@@ -43,9 +43,30 @@ switch ($accion) {
 $currentUser = api_get_current_user($conexion);
 $data = array();
 
+function requisiciones_obtener_obra_por_requisicion(PDO $conexion, $idReq)
+{
+    $consulta = "SELECT `requisicion_Obra` FROM `requisiciones` WHERE `requisicion_id` = ? LIMIT 1";
+    $resultado = $conexion->prepare($consulta);
+    $resultado->execute(array((int)$idReq));
+    $obraId = $resultado->fetchColumn();
+
+    return $obraId === false ? null : (int)$obraId;
+}
+
+function requisiciones_obtener_obra_por_presion(PDO $conexion, $idPresion)
+{
+    $consulta = "SELECT `presiones_obra` FROM `presiones` WHERE `presiones_id` = ? LIMIT 1";
+    $resultado = $conexion->prepare($consulta);
+    $resultado->execute(array((int)$idPresion));
+    $obraId = $resultado->fetchColumn();
+
+    return $obraId === false ? null : (int)$obraId;
+}
+
 switch ($accion) {
     case 1:
         $obraId = api_require_positive_int($obra, 'Obra invalida');
+        tf_require_obra_access($conexion, $obraId, $currentUser);
         $consulta = "SELECT `requisicion_id`, `requisicion_Numero`, `requisicion_Clave`, `requisicion_Nombre`, `requisicion_estatus`
             FROM `requisiciones`
             WHERE `requisicion_Obra` = ?
@@ -72,6 +93,7 @@ switch ($accion) {
 
     case 3:
         $obraId = api_require_positive_int($obra, 'Obra invalida');
+        tf_require_obra_access($conexion, $obraId, $currentUser);
         $consulta = "SELECT `obras_nombre`, `obra_automatico` FROM `obras` WHERE `obras_id` = ?";
         $resultado = $conexion->prepare($consulta);
         $resultado->execute(array($obraId));
@@ -80,6 +102,11 @@ switch ($accion) {
 
     case 4:
         $presionId = api_require_positive_int($id_presion, 'Presion invalida');
+        $presionObraId = requisiciones_obtener_obra_por_presion($conexion, $presionId);
+        if ($presionObraId === null) {
+            tf_abort(404, 'Presion no encontrada');
+        }
+        tf_require_obra_access($conexion, $presionObraId, $currentUser);
         $consulta = "SELECT SUM(`requisicion_total`) AS `totalPresion` FROM `requisiciones` WHERE `requisicion_idPresion` = ?";
         $resultado = $conexion->prepare($consulta);
         $resultado->execute(array($presionId));
@@ -87,13 +114,16 @@ switch ($accion) {
         break;
 
     case 5:
-        $resultado = $conexion->prepare("SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' ORDER BY `obras_nombre`");
-        $resultado->execute();
+        $scope = tf_scope_obras_query($conexion, $currentUser);
+        $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO'" . $scope['sql'] . " ORDER BY `obras_nombre`";
+        $resultado = $conexion->prepare($consulta);
+        $resultado->execute($scope['params']);
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
 
     case 6:
         $obraId = api_require_positive_int($obra, 'Obra invalida');
+        tf_require_obra_access($conexion, $obraId, $currentUser);
         if ($nombreReq === '' || $fechaReq === '' || $clave === '') {
             api_json_error('Faltan datos para crear la requisicion', 422);
         }
@@ -107,11 +137,21 @@ switch ($accion) {
 
             $consulta = "INSERT INTO `requisiciones` (
                 `requisicion_id`, `requisicion_Clave`, `requisicion_Numero`, `requisicion_Nombre`,
-                `requisicion_Obra`, `requisicion_fechaSolicitud`, `requisicion_Folio`, `requisicion_Hojas`,
+                `requisicion_Obra`, `requisicion_userCreado`, `requisicion_userCreadoNombre`,
+                `requisicion_fechaSolicitud`, `requisicion_Folio`, `requisicion_Hojas`,
                 `requisicion_total`, `requisicion_estatus`
-            ) VALUES (NULL, ?, ?, ?, ?, ?, ?, '0', '0', 'ABIERTO')";
+            ) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, '0', '0', 'ABIERTO')";
             $resultado = $conexion->prepare($consulta);
-            $resultado->execute(array($clave, $numeroRequisicion, $nombreReq, $obraId, $fechaReq, $folio));
+            $resultado->execute(array(
+                $clave,
+                $numeroRequisicion,
+                $nombreReq,
+                $obraId,
+                (int)$currentUser['user_id'],
+                $currentUser['user_name'] ?? $currentUser['user_nameUser'] ?? null,
+                $fechaReq,
+                $folio
+            ));
 
             $newId = (int)$conexion->lastInsertId();
             $data = array(
@@ -136,6 +176,7 @@ switch ($accion) {
 
     case 7:
         $obraId = api_require_positive_int($obra, 'Obra invalida');
+        tf_require_obra_access($conexion, $obraId, $currentUser);
         $folioManual = filter_var($folioReq, FILTER_VALIDATE_INT, array('options' => array('min_range' => 0)));
         $hojasIniciales = filter_var($Hoja, FILTER_VALIDATE_INT, array('options' => array('min_range' => 0)));
 
@@ -165,11 +206,23 @@ switch ($accion) {
             $numeroRequisicion = construirNumeroRequisicion($obraInfo, $clave, $folioManual);
             $consulta = "INSERT INTO `requisiciones` (
                 `requisicion_id`, `requisicion_Clave`, `requisicion_Numero`, `requisicion_Nombre`,
-                `requisicion_Obra`, `requisicion_fechaSolicitud`, `requisicion_Folio`, `requisicion_Hojas`,
+                `requisicion_Obra`, `requisicion_userCreado`, `requisicion_userCreadoNombre`,
+                `requisicion_fechaSolicitud`, `requisicion_Folio`, `requisicion_Hojas`,
                 `requisicion_total`, `requisicion_estatus`
-            ) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, '0', 'ABIERTO')";
+            ) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, '0', 'ABIERTO')";
             $resultado = $conexion->prepare($consulta);
-            $resultado->execute(array($clave, $numeroRequisicion, $nombreReq, $obraId, $fechaReq, $folioManual, $hojasIniciales));
+            $resultado = $conexion->prepare($consulta);
+            $resultado->execute(array(
+                $clave,
+                $numeroRequisicion,
+                $nombreReq,
+                $obraId,
+                (int)$currentUser['user_id'],
+                $currentUser['user_name'] ?? $currentUser['user_nameUser'] ?? null,
+                $fechaReq,
+                $folioManual,
+                $hojasIniciales
+            ));
 
             $newId = (int)$conexion->lastInsertId();
             $data = array(
@@ -195,6 +248,11 @@ switch ($accion) {
 
     case 8:
         $requisicionId = api_require_positive_int($idReq, 'Requisicion invalida');
+        $obraRequisicion = requisiciones_obtener_obra_por_requisicion($conexion, $requisicionId);
+        if ($obraRequisicion === null) {
+            tf_abort(404, 'Requisicion no encontrada');
+        }
+        tf_require_obra_access($conexion, $obraRequisicion, $currentUser);
         $numeroEditado = filter_var($numReq, FILTER_VALIDATE_INT, array('options' => array('min_range' => 0)));
         if ($numeroEditado === false || $nombreReq === '') {
             api_json_error('Datos invalidos para editar la requisicion', 422);
@@ -237,6 +295,11 @@ switch ($accion) {
 
     case 9:
         $requisicionId = api_require_positive_int($idReq, 'Requisicion invalida');
+        $obraRequisicion = requisiciones_obtener_obra_por_requisicion($conexion, $requisicionId);
+        if ($obraRequisicion === null) {
+            tf_abort(404, 'Requisicion no encontrada');
+        }
+        tf_require_obra_access($conexion, $obraRequisicion, $currentUser);
 
         try {
             $conexion->beginTransaction();

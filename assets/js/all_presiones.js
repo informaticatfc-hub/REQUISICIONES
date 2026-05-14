@@ -563,40 +563,39 @@ const appRequesition = new Vue({
             URL.revokeObjectURL(link.href);
         },
         exportarExcelObra: function (indicePresion) {
-            if (!window.XLSX) {
-                Swal.fire('Excel no disponible', 'No se cargo la libreria para exportar Excel.', 'warning');
-                return;
-            }
-
             var obra = this.presiones[indicePresion];
             var rows = obra.Presion_Obra || [];
-            var data = rows.map((row) => ({
-                CLAVE: row.clave || '',
-                NUM_REQ: row.NumReq || '',
-                PROVEEDOR: row.proveedor || '',
-                CONCEPTO: row.concepto || '',
-                ADEUDO_PROPUESTO: this.toNumber(row.total),
-                PAGO_AUTORIZADO: this.toNumber(row.adeudo),
-                FORMULA: row.formula || '',
-                OBSERVACIONES: row.Observaciones || '',
-                FORMA_PAGO: row.formaPago || ''
-            }));
+            var headers = ['CLAVE', 'NUM_REQ', 'PROVEEDOR', 'CONCEPTO', 'ADEUDO_PROPUESTO', 'PAGO_AUTORIZADO', 'OBSERVACIONES', 'FORMA_PAGO'];
+            var html = [];
+            html.push('<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr>');
+            headers.forEach(function (h) { html.push('<th>' + h + '</th>'); });
+            html.push('</tr></thead><tbody>');
+            rows.forEach((row) => {
+                html.push('<tr>');
+                html.push('<td>' + String(row.clave || '') + '</td>');
+                html.push('<td>' + String(row.NumReq || '') + '</td>');
+                html.push('<td>' + String(row.proveedor || '') + '</td>');
+                html.push('<td>' + String(row.concepto || '') + '</td>');
+                html.push('<td>' + this.toNumber(row.total) + '</td>');
+                html.push('<td>' + this.toNumber(row.adeudo) + '</td>');
+                html.push('<td>' + String(row.Observaciones || '') + '</td>');
+                html.push('<td>' + String(row.formaPago || '') + '</td>');
+                html.push('</tr>');
+            });
+            html.push('</tbody></table></body></html>');
 
-            var ws = XLSX.utils.json_to_sheet(data);
-            var wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Autorizacion');
-            XLSX.writeFile(wb, 'autorizacion_' + (obra.Nombre_Obra || 'obra').replace(/\s+/g, '_') + '.xlsx');
+            var blob = new Blob([html.join('')], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'autorizacion_' + (obra.Nombre_Obra || 'obra').replace(/\s+/g, '_') + '.xls';
+            link.click();
+            URL.revokeObjectURL(link.href);
         },
         triggerImportExcel: function (indicePresion) {
             var input = document.getElementById('excelImport' + indicePresion);
             if (input) input.click();
         },
         importarExcelObra: function (event, indicePresion) {
-            if (!window.XLSX) {
-                Swal.fire('Excel no disponible', 'No se cargo la libreria para importar Excel.', 'warning');
-                return;
-            }
-
             var file = event.target.files && event.target.files[0];
             if (!file) return;
 
@@ -606,11 +605,37 @@ const appRequesition = new Vue({
             var reader = new FileReader();
             reader.onload = (e) => {
                 try {
-                    var data = new Uint8Array(e.target.result);
-                    var wb = XLSX.read(data, { type: 'array' });
-                    var sheetName = wb.SheetNames[0];
-                    var ws = wb.Sheets[sheetName];
-                    var imported = XLSX.utils.sheet_to_json(ws, { defval: '' });
+                    var text = new TextDecoder('utf-8').decode(e.target.result);
+                    var imported = [];
+
+                    if (file.name.toLowerCase().endsWith('.csv')) {
+                        var lines = text.split(/\r?\n/).filter(function (line) { return line.trim() !== ''; });
+                        if (lines.length < 2) throw new Error('Archivo CSV sin datos.');
+                        var headers = lines[0].split(',').map(function (h) { return h.trim().replace(/^"|"$/g, ''); });
+                        for (var i = 1; i < lines.length; i++) {
+                            var values = lines[i].split(',');
+                            var rowObj = {};
+                            headers.forEach(function (h, idx) {
+                                rowObj[h] = (values[idx] || '').replace(/^"|"$/g, '');
+                            });
+                            imported.push(rowObj);
+                        }
+                    } else {
+                        var parser = new DOMParser();
+                        var doc = parser.parseFromString(text, 'text/html');
+                        var trs = Array.from(doc.querySelectorAll('table tr'));
+                        if (trs.length < 2) throw new Error('Archivo Excel/HTML sin datos.');
+                        var headers = Array.from(trs[0].querySelectorAll('th,td')).map(function (cell) { return cell.textContent.trim(); });
+                        for (var j = 1; j < trs.length; j++) {
+                            var cells = Array.from(trs[j].querySelectorAll('td'));
+                            if (!cells.length) continue;
+                            var rowObj = {};
+                            headers.forEach(function (h, idx) {
+                                rowObj[h] = (cells[idx] ? cells[idx].textContent : '').trim();
+                            });
+                            imported.push(rowObj);
+                        }
+                    }
 
                     var byKey = {};
                     rows.forEach((row) => {
@@ -634,7 +659,7 @@ const appRequesition = new Vue({
                     this.programarGuardadoBorrador();
                     Swal.fire('Importacion completada', 'Filas actualizadas: ' + applied, 'success');
                 } catch (error) {
-                    Swal.fire('Error de importacion', 'No fue posible leer el archivo Excel.', 'error');
+                    Swal.fire('Error de importacion', error.message || 'No fue posible leer el archivo.', 'error');
                 } finally {
                     event.target.value = '';
                 }
@@ -675,52 +700,6 @@ const appRequesition = new Vue({
                 this.formulaBar = String(row.formula || '');
             } else {
                 this.formulaBar = '';
-            }
-        },
-        aplicarFormulaBarra: function (indicePresion) {
-            if (!this.selectedCell) {
-                Swal.fire('Sin celda', 'Selecciona primero una celda para aplicar la formula.', 'info');
-                return;
-            }
-
-            if (this.selectedCell.presion !== indicePresion) {
-                Swal.fire('Obra distinta', 'La celda seleccionada pertenece a otra obra. Selecciona una celda de esta tabla.', 'warning');
-                return;
-            }
-
-            var row = this.presiones[this.selectedCell.presion].Presion_Obra[this.selectedCell.hoja];
-            var value = String(this.formulaBar || '').trim();
-
-            if (this.selectedCell.col === 'AUT') {
-                if (value.startsWith('=')) {
-                    try {
-                        row.adeudo = this.evaluarFormulaExcel(value, row);
-                        row.formula = value;
-                        this.marcarFilaEditada(row);
-                        this.programarGuardadoBorrador();
-                    } catch (error) {
-                        Swal.fire('Formula invalida', error.message, 'warning');
-                        return;
-                    }
-                } else {
-                    row.adeudo = this.toNumber(value);
-                    this.marcarFilaEditada(row);
-                    this.programarGuardadoBorrador();
-                }
-            }
-
-            if (this.selectedCell.col === 'FX') {
-                row.formula = value;
-                if (value) {
-                    try {
-                        row.adeudo = this.evaluarFormulaExcel(value, row);
-                        this.marcarFilaEditada(row);
-                        this.programarGuardadoBorrador();
-                    } catch (error) {
-                        Swal.fire('Formula invalida', error.message, 'warning');
-                        return;
-                    }
-                }
             }
         },
         onCellKeydown: function (event, indicePresion, indiceHoja) {

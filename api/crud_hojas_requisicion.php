@@ -33,8 +33,47 @@ if ($accionInt === 6) {
 $currentUser = api_get_current_user($conexion);
 $data = array();
 
+function hojas_requisicion_obtener_obra_por_requisicion(PDO $conexion, $idReq)
+{
+    $consulta = "SELECT `requisicion_Obra` FROM `requisiciones` WHERE `requisicion_id` = ? LIMIT 1";
+    $resultado = $conexion->prepare($consulta);
+    $resultado->execute(array((int)$idReq));
+    $obraId = $resultado->fetchColumn();
+
+    return $obraId === false ? null : (int)$obraId;
+}
+
+function hojas_requisicion_obtener_obra_por_hoja(PDO $conexion, $idHoja)
+{
+    $consulta = "SELECT r.`requisicion_Obra`
+        FROM `hojasrequisicion` h
+        INNER JOIN `requisiciones` r ON r.`requisicion_id` = h.`hojaRequisicion_idReq`
+        WHERE h.`hojaRequisicion_id` = ?
+        LIMIT 1";
+    $resultado = $conexion->prepare($consulta);
+    $resultado->execute(array((int)$idHoja));
+    $obraId = $resultado->fetchColumn();
+
+    return $obraId === false ? null : (int)$obraId;
+}
+
+function hojas_requisicion_obtener_obra_por_presion(PDO $conexion, $idPresion)
+{
+    $consulta = "SELECT `presiones_obra` FROM `presiones` WHERE `presiones_id` = ? LIMIT 1";
+    $resultado = $conexion->prepare($consulta);
+    $resultado->execute(array((int)$idPresion));
+    $obraId = $resultado->fetchColumn();
+
+    return $obraId === false ? null : (int)$obraId;
+}
+
 switch ($accion) {
     case 1:
+        $obraRequisicion = hojas_requisicion_obtener_obra_por_requisicion($conexion, $IdReq);
+        if ($obraRequisicion === null) {
+            tf_abort(404, 'Requisicion no encontrada');
+        }
+        tf_require_obra_access($conexion, $obraRequisicion, $currentUser);
         $consulta = "SELECT * FROM `hojasrequisicion` WHERE `hojaRequisicion_idReq` = :id_req ORDER BY CASE hojaRequisicion_estatus WHEN 'RECHAZADA' THEN 1 WHEN 'PENDIENTE' THEN 2 WHEN 'NUEVO' THEN 3 WHEN 'REVISION' THEN 4 WHEN 'LIGADA' THEN 5 WHEN 'AUTORIZADA' THEN 6 ELSE 7 END";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':id_req', (int)$IdReq, PDO::PARAM_INT);
@@ -47,26 +86,36 @@ switch ($accion) {
     case 3:
         $consulta = "SELECT `obras_nombre` FROM `obras` WHERE `obras_id` = :obra";
         $resultado = $conexion->prepare($consulta);
-        $resultado->bindValue(':obra', (int)$obra, PDO::PARAM_INT);
+        $obraId = api_require_positive_int($obra, 'Obra invalida');
+        tf_require_obra_access($conexion, $obraId, $currentUser);
+        $resultado->bindValue(':obra', $obraId, PDO::PARAM_INT);
         $resultado->execute();
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 4:
+        $presionObra = hojas_requisicion_obtener_obra_por_presion($conexion, $id_presion);
+        if ($presionObra === null) {
+            tf_abort(404, 'Presion no encontrada');
+        }
+        tf_require_obra_access($conexion, $presionObra, $currentUser);
         $consulta = "SELECT SUM(`requisicion_total`) AS `totalPresion` FROM `requisiciones` WHERE `requisicion_idPresion` = ?";
         $resultado = $conexion->prepare($consulta);
         $resultado->execute(array((int)$id_presion));
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 5:
-        $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' ORDER BY `obras_nombre`";
+        $scope = tf_scope_obras_query($conexion, $currentUser);
+        $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO'" . $scope['sql'] . " ORDER BY `obras_nombre`";
         $resultado = $conexion->prepare($consulta);
-        $resultado->execute();
+        $resultado->execute($scope['params']);
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 6:
+        $obraId = api_require_positive_int($obra, 'Obra invalida');
+        tf_require_obra_access($conexion, $obraId, $currentUser);
         $consulta = "SELECT `obras_nombre`,`ciudadesObras_codigo` FROM `obras` JOIN estadosobra ON estadosobra.ciudadesObras_id = obras.obras_cuidad WHERE `obras_id` = ?";
         $resultado = $conexion->prepare($consulta);
-        $resultado->execute(array((int)$obra));
+        $resultado->execute(array($obraId));
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         if (count($data) === 0) {
             $data = array();
@@ -115,6 +164,11 @@ switch ($accion) {
         }
         break;
     case 7:
+        $obraId = hojas_requisicion_obtener_obra_por_requisicion($conexion, $IdReq);
+        if ($obraId === null) {
+            tf_abort(404, 'Requisicion no encontrada');
+        }
+        tf_require_obra_access($conexion, $obraId, $currentUser);
         $consulta = "SELECT `requisicion_Numero`,`requisicion_Hojas` FROM `requisiciones` WHERE `requisicion_id` = :id_req";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':id_req', (int)$IdReq, PDO::PARAM_INT);
@@ -122,6 +176,11 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
    case 8:
+    $obraHoja = hojas_requisicion_obtener_obra_por_hoja($conexion, $idHoja);
+    if ($obraHoja === null) {
+        tf_abort(404, 'Hoja no encontrada');
+    }
+    tf_require_obra_access($conexion, $obraHoja, $currentUser);
     $conexion->beginTransaction();
     try {
         $stmt1 = $conexion->prepare("DELETE FROM itemrequisicion WHERE itemRequisicion_idHoja = :idHoja");

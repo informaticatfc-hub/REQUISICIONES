@@ -1322,7 +1322,7 @@ const appRequesition = new Vue({
          * Función que se ejecuta cuando se crea el componente.
          * Inicializa la tabla de datos y realiza varias peticiones a la base de datos para obtener información.
     */
-    mounted: function () {
+    mounted: async function () {
         /**
          * Realiza varias peticiones a la base de datos para obtener información.
          * Las peticiones incluyen la lista de obras, la información de la requisición y la información de la obra.
@@ -1330,13 +1330,17 @@ const appRequesition = new Vue({
         var obraId = localStorage.getItem("obraActiva");
         var reqId = localStorage.getItem("idRequisicion");
         var hojaId = localStorage.getItem("idHoja");
-        if (!obraId || !reqId) { window.location.href = './index.php'; return; }
+        await this.consultarUsuario();
+        if (!obraId && this.users && this.users.length && this.users[0].user_obra_id) {
+            obraId = this.users[0].user_obra_id;
+            localStorage.setItem("obraActiva", obraId);
+        }
+        if (!obraId || !reqId) { window.location.href = './obras.php'; return; }
         this.listarObras();
         this.obtenerInfoRequisicion(reqId);
         this.obtnerInfoObras(obraId);
         this.agregarInformacionHoja(hojaId);
         this.listarItems(hojaId);
-        this.consultarUsuario();
         this.validate = localStorage.getItem("validate");
         /**
          * Inicializa la tabla de datos con la configuración especificada.

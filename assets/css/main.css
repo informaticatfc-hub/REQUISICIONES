@@ -138,9 +138,23 @@ body.sidebar-collapsed #sidebar>.dropdown>a{justify-content:center;padding:9px 8
 .app-navbar .container-fluid{display:flex;align-items:center;gap:10px}
 .app-navbar .navbar-brand,.navbar-brand{font-size:.95rem;font-weight:700;letter-spacing:.01em;color:rgba(255,255,255,.9)!important;text-transform:none}
 
-/* Shared actions strip used by unified legacy navbar include */
-.director-shortcuts{display:flex;align-items:center;gap:10px;padding:10px 24px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:calc(var(--topbar-h) + 42px);z-index:89}
-.director-shortcuts .btn{min-height:34px;font-size:.8rem;padding:.35rem .8rem}
+/* Unified legacy navbar */
+.legacy-navbar-shell{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.legacy-navbar-brand{display:inline-flex;align-items:center;gap:10px;font-size:1rem;font-weight:800;color:#fff!important}
+.legacy-navbar-logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--blue-500),var(--blue-400));display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800;box-shadow:var(--shadow-sm)}
+.legacy-navbar-title{display:inline-flex;align-items:center;line-height:1.1}
+.legacy-navbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.legacy-navbar-actions .tf-nav-link{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:.3rem .75rem;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.04);color:#fff!important;font-size:.78rem;font-weight:700;transition:background .15s,border-color .15s,transform .1s}
+.legacy-navbar-actions .tf-nav-link:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.34)}
+.legacy-navbar-actions .tf-nav-link.active{background:rgba(37,99,235,.35);border-color:rgba(59,130,246,.45)}
+.legacy-navbar-actions .tf-nav-danger{background:rgba(220,38,38,.18);border-color:rgba(220,38,38,.3)}
+.legacy-navbar-actions .tf-nav-danger:hover{background:rgba(220,38,38,.28)}
+
+/* Directivo tables and dense layout */
+.excel-grid{min-width:1000px}
+.excel-grid th,.excel-grid td{font-size:.8rem}
+.excel-grid .formula-cell{min-width:0}
+.excel-grid textarea{font-size:.8rem}
 
 /* BREADCRUMB BAR */
 #navtab{padding:0 24px;height:42px;min-height:42px;background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;position:sticky;top:var(--topbar-h);z-index:90;box-shadow:var(--shadow-xs)}

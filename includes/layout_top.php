@@ -35,7 +35,7 @@ $tf_show_direccion = $tf_show_direccion ?? false;
 $tf_show_admin     = $tf_show_admin     ?? false;
 $tf_show_subbar    = $tf_show_subbar    ?? true;
 $tf_role_code      = strtolower((string)($tf_user['roleCode'] ?? ''));
-$tf_is_director    = $tf_role_code === 'director';
+$tf_is_director    = in_array($tf_role_code, ['director', 'direccion'], true);
 
 // Sanitiza iniciales
 if (empty($tf_user['initials']) && !empty($tf_user['name'])) {
@@ -175,21 +175,10 @@ function tf_active($current, $key) {
                 <?php endif; ?>
             </nav>
 
-            <button class="tf-search" id="tfOpenCmd" type="button"
-                    aria-label="Abrir buscador global">
-                <i class="bi bi-search"></i>
-                <span class="tf-search-label">Buscar obras, requisiciones...</span>
-                <span class="tf-search-kbd">Ctrl K</span>
-            </button>
-
             <div class="tf-topbar-actions">
                 <button class="tf-icon-btn" id="tfThemeToggle" type="button"
                         title="Cambiar tema" aria-label="Cambiar tema">
                     <i class="bi bi-moon-stars-fill"></i>
-                </button>
-                <button class="tf-icon-btn" type="button"
-                        title="Notificaciones" aria-label="Notificaciones">
-                    <i class="bi bi-bell-fill"></i>
                 </button>
                 <div class="dropdown">
                     <button class="tf-user" data-bs-toggle="dropdown"

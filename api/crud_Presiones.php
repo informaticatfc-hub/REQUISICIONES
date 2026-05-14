@@ -25,9 +25,20 @@ if ($accion === 3) {
 $currentUser = api_get_current_user($conexion);
 $data = array();
 
+function presiones_obtener_obra_id(PDO $conexion, $idPresion)
+{
+    $consulta = "SELECT `presiones_obra` FROM `presiones` WHERE `presiones_id` = ? LIMIT 1";
+    $resultado = $conexion->prepare($consulta);
+    $resultado->execute(array((int)$idPresion));
+    $obraId = $resultado->fetchColumn();
+
+    return $obraId === false ? null : (int)$obraId;
+}
+
 switch ($accion) {
     case 1:
         $obraId = api_require_positive_int($obra, 'Obra invalida');
+        tf_require_obra_access($conexion, $obraId, $currentUser);
         $consulta = "SELECT `presiones_id`, `presiones_nombre`, `presiones_alias`, `presiones_estatus`, `presiones_semana`, `presiones_dia`
             FROM `presiones`
             WHERE `presiones_obra` = ?
@@ -43,6 +54,7 @@ switch ($accion) {
 
     case 3:
         $obraId = api_require_positive_int($obra, 'Obra invalida');
+        tf_require_obra_access($conexion, $obraId, $currentUser);
 
         if ($semana === '' || $dia === '' || $fecha === '') {
             api_json_error('Faltan datos para crear la presion', 422);
@@ -125,6 +137,7 @@ switch ($accion) {
 
     case 4:
         $obraId = api_require_positive_int($obra, 'Obra invalida');
+        tf_require_obra_access($conexion, $obraId, $currentUser);
         $consulta = "SELECT `obras_nombre` FROM `obras` WHERE `obras_id` = ?";
         $resultado = $conexion->prepare($consulta);
         $resultado->execute(array($obraId));
@@ -132,8 +145,10 @@ switch ($accion) {
         break;
 
     case 5:
-        $resultado = $conexion->prepare("SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' ORDER BY `obras_nombre`");
-        $resultado->execute();
+        $scope = tf_scope_obras_query($conexion, $currentUser);
+        $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO'" . $scope['sql'] . " ORDER BY `obras_nombre`";
+        $resultado = $conexion->prepare($consulta);
+        $resultado->execute($scope['params']);
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
 

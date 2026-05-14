@@ -36,17 +36,8 @@ $tf_show_subbar    = true;
 $tf_user_id_js     = (string)$usuario_sesion;
 $tf_es_director    = ($usuario_rolCode === 'director') || ($usuario_dirAcc === 1);
 
-// Acciones rapidas en la sub-bar
-$tf_subbar_extra = '
-    <div class="tf-subbar-actions">
-        <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm" onclick="window.TfLayout && window.TfLayout.openCmd()">
-            <i class="bi bi-search"></i> Buscar
-        </button>
-        <a href="./menu_catalago.php" class="tf-btn tf-btn-secondary tf-btn-sm">
-            <i class="bi bi-collection"></i> Catalogos
-        </a>
-    </div>
-';
+// La sub-bar queda limpia; las acciones ya se concentran en el navbar principal.
+$tf_subbar_extra = '';
 
 include __DIR__ . '/../includes/layout_top.php';
 ?>
@@ -234,7 +225,7 @@ include __DIR__ . '/../includes/layout_top.php';
             </div>
         </section>
 
-        <!-- Panel lateral: acciones rapidas + actividad -->
+        <!-- Panel lateral: acciones rapidas -->
         <aside class="tf-side-col">
             <section class="tf-card">
                 <header class="tf-card-header">
@@ -281,38 +272,6 @@ include __DIR__ . '/../includes/layout_top.php';
                 </div>
             </section>
 
-            <section class="tf-card">
-                <header class="tf-card-header">
-                    <h2 class="tf-card-title">
-                        <i class="bi bi-clock-history"></i> Actividad reciente
-                    </h2>
-                </header>
-                <div class="tf-card-body">
-                    <ul class="tf-timeline">
-                        <li>
-                            <span class="tf-timeline-dot tf-timeline-dot-primary"></span>
-                            <div>
-                                <strong>Bienvenido al nuevo workspace</strong>
-                                <small>Diseno renovado v4.1 con soporte mobile</small>
-                            </div>
-                        </li>
-                        <li>
-                            <span class="tf-timeline-dot tf-timeline-dot-success"></span>
-                            <div>
-                                <strong>Sistema actualizado</strong>
-                                <small>Bootstrap 5.3.3 + Bootstrap Icons</small>
-                            </div>
-                        </li>
-                        <li>
-                            <span class="tf-timeline-dot tf-timeline-dot-warning"></span>
-                            <div>
-                                <strong>Roles y permisos</strong>
-                                <small>Proximamente: control granular por rol</small>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-            </section>
         </aside>
     </div>
 
