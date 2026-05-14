@@ -290,14 +290,20 @@ if (!defined('TF_RBAC_LOADED')) {
         header('X-Frame-Options: SAMEORIGIN');
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
-        // CSP basico, permite CDN usados por el proyecto
+        // CSP: permite los CDN usados por el proyecto + source maps (.map)
+        // Los .map se piden por fetch() y caen bajo connect-src, no script-src.
         $csp = "default-src 'self'; "
              . "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://code.jquery.com https://unpkg.com; "
+             . "script-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://code.jquery.com https://unpkg.com; "
              . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://fonts.googleapis.com; "
+             . "style-src-elem 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://fonts.googleapis.com; "
              . "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
-             . "img-src 'self' data:; "
-             . "connect-src 'self'; "
-             . "frame-ancestors 'self'";
+             . "img-src 'self' data: https://cdn.jsdelivr.net; "
+             . "connect-src 'self' https://cdn.jsdelivr.net https://cdn.datatables.net https://unpkg.com; "
+             . "frame-ancestors 'self'; "
+             . "base-uri 'self'; "
+             . "form-action 'self'; "
+             . "object-src 'none'";
         header("Content-Security-Policy: $csp");
     }
 }
