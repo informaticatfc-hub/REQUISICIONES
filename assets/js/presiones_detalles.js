@@ -18,12 +18,14 @@ const appRequesition = new Vue({
         estatus: ""
     },
     methods: {
-        consultarUsuario: async function (user_id) {
+        consultarUsuario: async function () {
+            // Fase 5: identidad por sesion server-side (sin localStorage.NameUser)
             try {
-                const response = await axios.post(url, { accion: 1, id_user: user_id });
-                this.users = response.data;
-                this.NameUser = this.users[0].user_name;
-                console.log(this.users);
+                const response = await axios.post(url, { accion: 1 });
+                this.users = response.data || [];
+                if (this.users.length > 0 && this.users[0].user_name) {
+                    this.NameUser = this.users[0].user_name;
+                }
             } catch (error) {
                 console.error("Error al consultar usuario", error);
             }
@@ -301,7 +303,7 @@ const appRequesition = new Vue({
         await this.listarObras();
         await this.asignarDiaySamana();
         await this.infoObraActiva(localStorage.getItem("obraActiva"));
-        await this.consultarUsuario(localStorage.getItem("NameUser"));
+        await this.consultarUsuario();
         await this.consultarEstatus(localStorage.getItem("IdPresion"));
         await this.cargarDatosPresion(localStorage.getItem("IdPresion"));
     },

@@ -91,30 +91,14 @@ const appRequesition = new Vue({
             * 
             * @param {number} user_id - El id del usuario para consultar la información.
         */
-        consultarUsuario: function (user_id) {
-            /**
-             * Realiza una petición POST a la URL para obtener la información del usuario.
-             * 
-             * @param {string} url - La URL a la cual se realizará la petición.
-             * @param {object} data - El objeto que contiene los datos a enviar en la petición.
-             * @param {number} data.accion - La acción a realizar (en este caso, 2 para obtener la información del usuario).
-             * @param {number} data.id_user - El id del usuario para consultar la información.
-             */
-            axios.post(url, { accion: 2, id_user: user_id }).then(response => {
-                /**
-                 * Asigna la respuesta de la petición a la variable 'users'.
-                 * 
-                 * @type {array} response.data - La respuesta de la petición, que contiene la información del usuario.
-                 */
-                this.users = response.data;
-                /**
-                 * Extrae el nombre del usuario de la respuesta y lo asigna a la variable 'NameUser'.
-                 * 
-                 * @type {string} this.users[0].user_name - El nombre del usuario.
-                 */
-                this.NameUser = this.users[0].user_name;
-                console.log(this.users);
-            });
+        consultarUsuario: function () {
+            // Fase 5: identidad por sesion server-side (sin localStorage.NameUser)
+            axios.post(url, { accion: 2 }).then(response => {
+                this.users = response.data || [];
+                if (this.users[0] && this.users[0].user_name) {
+                    this.NameUser = this.users[0].user_name;
+                }
+            }).catch(err => console.error("consultarUsuario:", err));
         },
         /**
              * Función para editar un item existente en la requisición.
@@ -1348,7 +1332,7 @@ const appRequesition = new Vue({
         this.obtnerInfoObras(localStorage.getItem("obraActiva"));
         this.agregarInformacionHoja(localStorage.getItem("idHoja"));
         this.listarItems(localStorage.getItem("idHoja"));
-        this.consultarUsuario(localStorage.getItem("NameUser"));
+        this.consultarUsuario();
         this.validate = localStorage.getItem("validate");
         /**
          * Inicializa la tabla de datos con la configuración especificada.

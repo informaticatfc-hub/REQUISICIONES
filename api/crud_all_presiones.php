@@ -17,6 +17,7 @@ $presion = (isset($_POST['presion'])) ? $_POST['presion'] : [];
 
 // --- RBAC + CSRF (Fase 3) ---
 // case 1 (echo user) y 2-3 (listas) son lecturas; 4-7 son writes (autorizar / actualizar pagos).
+// case 8 (resumen via vista v_presiones_summary) tambien es lectura (Fase 5).
 $writeActions = array(4, 5, 6, 7);
 $accionInt = (int)$accion;
 if (in_array($accionInt, $writeActions, true)) {
@@ -242,6 +243,25 @@ switch ($accion) {
             ];
         }
 
+        break;
+    case 8:
+        // Fase 5: Resumen agregado de presiones usando la vista v_presiones_summary
+        // Calcula totales/adeudo desde las hojas reales (los campos
+        // presiones_adeudo y presiones_gastosObra estan en 0 en el dump).
+        $obraFiltro = isset($_POST['obra']) ? (int)$_POST['obra'] : 0;
+        if ($obraFiltro > 0) {
+            $consulta = "SELECT * FROM `v_presiones_summary`
+                          WHERE presiones_obra = :obra
+                          ORDER BY presiones_fechaCreacion DESC, presiones_id DESC";
+            $resultado = $conexion->prepare($consulta);
+            $resultado->bindValue(':obra', $obraFiltro, PDO::PARAM_INT);
+        } else {
+            $consulta = "SELECT * FROM `v_presiones_summary`
+                          ORDER BY presiones_fechaCreacion DESC, presiones_id DESC";
+            $resultado = $conexion->prepare($consulta);
+        }
+        $resultado->execute();
+        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
 }
 

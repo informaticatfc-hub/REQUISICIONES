@@ -250,12 +250,14 @@ const appRequesition = new Vue({
                 console.log(response.data);
             });
         },
-        consultarUsuario: function (user_id) {
-            axios.post(url, { accion: 5, id_user: user_id }).then(response => {
-                this.users = response.data;
-                this.NameUser = this.users[0].user_name;
-                console.log(this.users);
-            });
+        consultarUsuario: function () {
+            // Fase 5: identidad por sesion server-side (sin localStorage.NameUser)
+            axios.post(url, { accion: 5 }).then(response => {
+                this.users = response.data || [];
+                if (this.users[0] && this.users[0].user_name) {
+                    this.NameUser = this.users[0].user_name;
+                }
+            }).catch(err => console.error("consultarUsuario:", err));
         },
         listarObras: function () {
             axios.post(url, { accion: 6 }).then(response => {
@@ -284,7 +286,7 @@ const appRequesition = new Vue({
     created: function () {
         this.listarObras();
         this.agregarEmisor();
-        this.consultarUsuario(localStorage.getItem("NameUser"));
+        this.consultarUsuario();
         this.mostrarProvedores();
         this.htmlWinRet = '<div class="col"><hr /><div class="row form-group mx-0 my-3"><div class="col d-flex flex-column"><label class="text-start py-2" for="Producto">Producto</label><textarea class="form-control" placeholder="Ingresa los datos de tu Producto" id="Producto" name="Producto"rows="3"></textarea></div></div><div class="row form-group mx-0 my-3"><div class="col-4 d-flex flex-column"><label class="text-start py-2" for="Unidad">Unidad</label><select class="form-select" aria-label="Default select example" id="Unidad"><option> Selecciona Clave</option><option value="DISEÑO">DISEÑO</option><option value="PIEZAS">PIEZAS</option><option value="BULTOS">BULTOS</option><option value="PESOS">PESOS</option><option value="LITROS">LITROS</option><option value="SERVICIOS">SERVICIO</option><option value="MENSUALIDAD">MENSUALIDAD</option><option value="RENTA">RENTA</option><option value="CUBETAS">CUBETAS</option><option value="TONELADAS">TONELADAS</option><option value="METROS">METROS</option><option value="METROS CUADRADOS">METROS CUADRADOS</option><option value="METROS CUBICOS">METROS CUBICOS</option><option value="KILOGRAMOS">KILOGRAMOS</option></select></div><div class="col-4 d-flex flex-column"><label class="text-start py-2" for="Cantidad">Cantidad</label><input type="number" min="0" placeholder="0" class="form-control" id="Cantidad" name="Cantidad"></div><div class="col-4 d-flex flex-column"><label class="text-start py-2" for="UnitedPrice">Precio Unitario</label><input type="number" min="0" placeholder="0" class="form-control" id="UnitedPrice" name="UnitedPrice"></div></div><hr /><div class="row mx-0 my-3"><div class="col"><h5 class="text-start fw-bold">Activa las Requisiciones Necesarias</h5></div></div><div class="row form-group mx-0 my-3"><div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="RetFlete"><label class="form-check-label" for="RetFlete">Retencion por Flete (4%)</label></div></div><div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="RetPersonaFIsica"><label class="form-check-label" for="RetPersonaFIsica">Retencion por Renta PersonaFisica(10.67%)</label></div></div></div><div class="row form-group mx-0 my-3"><div class="col-6"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="RetencionRESICO"><label class="form-check-label" for="RetencionRESICO">Retencion por RESICO (1.25%)</label></div></div></div></div>';;
 

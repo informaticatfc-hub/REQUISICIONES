@@ -9,15 +9,15 @@ const appRequesition = new Vue({
         NameUser: ""
     },
     methods: {
-        consultarUsuario: function (user_id) {
-            axios.post(url, { accion: 1, id_user: user_id }).then(response => {
-                this.users = response.data;
-                if (this.users.length > 0) {
+        consultarUsuario: function () {
+            // Fase 5: identidad por sesion server-side (sin localStorage.NameUser)
+            axios.post(url, { accion: 1 }).then(response => {
+                this.users = response.data || [];
+                if (this.users.length > 0 && this.users[0].user_name) {
                     this.NameUser = this.users[0].user_name;
                 } else {
                     this.NameUser = "Usuario desconocido";
                 }
-                console.log(this.users);
             }).catch(error => {
                 console.error("Error al consultar usuario:", error);
             });
@@ -47,7 +47,7 @@ const appRequesition = new Vue({
     },
     created: function () {
         this.listarObras();
-        this.consultarUsuario(localStorage.getItem("NameUser"));
+        this.consultarUsuario();
     },
     computed: {
 

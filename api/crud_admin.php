@@ -33,17 +33,24 @@ $data = [];
 
 switch ($accion) {
     case 1:
-        // Listar usuarios
+        // Listar usuarios — Fase 5: usa la vista v_users_full (rol + permisos_count)
         tf_require_permission($pdo, 'admin.users.view');
         $stmt = $pdo->query(
-            "SELECT u.user_id, u.user_nameUser, u.user_name, u.user_email,
-                    u.user_directionAcess, u.user_role_id,
-                    COALESCE(u.user_estatus,'ACTIVO') AS user_estatus,
-                    u.user_lastLogin,
-                    r.role_codigo, r.role_nombre, r.role_nivel
-               FROM `users` u
-               LEFT JOIN `roles` r ON r.role_id = u.user_role_id
-               ORDER BY u.user_id DESC"
+            "SELECT v.user_id,
+                    v.user_nameUser,
+                    v.user_name,
+                    v.email AS user_email,
+                    v.user_directionAcess,
+                    COALESCE(v.user_estatus,'ACTIVO') AS user_estatus,
+                    v.user_lastLogin,
+                    v.role_codigo,
+                    v.role_nombre,
+                    v.role_nivel,
+                    v.permisos_count,
+                    u.user_role_id
+               FROM `v_users_full` v
+               LEFT JOIN `users` u ON u.user_id = v.user_id
+               ORDER BY v.user_id DESC"
         );
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         break;

@@ -22,12 +22,14 @@ const appRequesition = new Vue({
         email_prov: ""
     },
     methods: {
-        consultarUsuario: function (user_id) {
-            axios.post(url, { accion: 2, id_user: user_id }).then(response => {
-                this.users = response.data;
-                this.NameUser = this.users[0].user_name;
-                console.log(this.users);
-            });
+        consultarUsuario: function () {
+            // Fase 5: identidad por sesion server-side (sin localStorage.NameUser)
+            axios.post(url, { accion: 2 }).then(response => {
+                this.users = response.data || [];
+                if (this.users[0] && this.users[0].user_name) {
+                    this.NameUser = this.users[0].user_name;
+                }
+            }).catch(err => console.error("consultarUsuario:", err));
         },
         irObra(idObra) {
             localStorage.setItem("obraActiva", idObra);
@@ -73,7 +75,7 @@ const appRequesition = new Vue({
     },
     created: function () {
         this.listarObras();
-        this.consultarUsuario(localStorage.getItem("NameUser"));
+        this.consultarUsuario();
         this.listarBancos();
     },
     computed: {
