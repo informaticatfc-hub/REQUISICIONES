@@ -139,21 +139,27 @@ body.sidebar-collapsed #sidebar>.dropdown>a{justify-content:center;padding:9px 8
 .app-navbar .navbar-brand,.navbar-brand{font-size:.95rem;font-weight:700;letter-spacing:.01em;color:rgba(255,255,255,.9)!important;text-transform:none}
 
 /* Unified legacy navbar */
-.legacy-navbar-shell{display:flex;align-items:center;justify-content:space-between;gap:14px}
-.legacy-navbar-brand{display:inline-flex;align-items:center;gap:10px;font-size:1rem;font-weight:800;color:#fff!important}
-.legacy-navbar-logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--blue-500),var(--blue-400));display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800;box-shadow:var(--shadow-sm)}
-.legacy-navbar-title{display:inline-flex;align-items:center;line-height:1.1}
-.legacy-navbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.legacy-navbar-actions .tf-nav-link{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:.3rem .75rem;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.04);color:#fff!important;font-size:.78rem;font-weight:700;transition:background .15s,border-color .15s,transform .1s}
-.legacy-navbar-actions .tf-nav-link:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.34)}
-.legacy-navbar-actions .tf-nav-link.active{background:rgba(37,99,235,.35);border-color:rgba(59,130,246,.45)}
-.legacy-navbar-actions .tf-nav-danger{background:rgba(220,38,38,.18);border-color:rgba(220,38,38,.3)}
-.legacy-navbar-actions .tf-nav-danger:hover{background:rgba(220,38,38,.28)}
+.legacy-navbar-shell-unified{display:flex;align-items:center;justify-content:space-between;gap:18px;min-width:0;width:100%}
+.legacy-navbar-brand-unified{display:inline-flex;align-items:center;gap:12px;min-width:0;text-decoration:none}
+.legacy-navbar-logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--blue-500),var(--blue-400));display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800;box-shadow:var(--shadow-sm);color:#fff}
+.legacy-navbar-brand-copy{display:flex;flex-direction:column;line-height:1;min-width:0}
+.legacy-navbar-brand-copy strong{font-size:.96rem;color:#f8fafc;font-weight:800;letter-spacing:.01em;white-space:nowrap}
+.legacy-navbar-brand-copy small{font-size:.7rem;color:rgba(255,255,255,.62);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.legacy-navbar-links{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.legacy-navbar-link{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 14px;border-radius:10px;color:rgba(191,219,254,.92);text-decoration:none;font-size:.92rem;font-weight:600;transition:background .16s ease,color .16s ease,border-color .16s ease;border:1px solid transparent;white-space:nowrap}
+.legacy-navbar-link:hover{background:rgba(255,255,255,.08);color:#fff}
+.legacy-navbar-link.is-active{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.14);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.legacy-navbar-actions-placeholder{display:flex;align-items:center;justify-content:flex-end;gap:12px;min-width:0}
+.legacy-navbar-logout{color:rgba(191,219,254,.88);text-decoration:none;font-size:.84rem;font-weight:700;letter-spacing:.02em}
+.legacy-navbar-logout:hover{color:#fff}
+.legacy-navbar-userchip{display:inline-flex;align-items:center;gap:10px;padding:5px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);min-width:0}
+.legacy-navbar-avatar{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#3b82f6;color:#fff;font-size:.82rem;font-weight:800;flex-shrink:0}
+.legacy-navbar-usertext{display:flex;flex-direction:column;line-height:1.08;min-width:0}
+.legacy-navbar-usertext strong{font-size:.82rem;color:#fff;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.legacy-navbar-usertext small{font-size:.66rem;color:rgba(255,255,255,.65);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
 .legacy-actions-menu{min-width:260px;border-radius:12px;border:1px solid var(--border);padding:8px}
 .legacy-action-item{border-radius:8px;padding:.45rem .7rem;font-size:.82rem;font-weight:600;color:var(--text-primary)}
 .legacy-action-item:hover{background:var(--slate-100);color:var(--text-primary)}
-.legacy-navbar-actions-placeholder{display:flex;align-items:center;justify-content:flex-end;min-width:130px}
-.legacy-navbar-role{display:inline-flex;align-items:center;min-height:30px;padding:.2rem .55rem;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);font-size:.72rem;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 
 /* Directivo tables and dense layout */
 .excel-grid{min-width:1000px}

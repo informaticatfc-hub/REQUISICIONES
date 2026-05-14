@@ -10,6 +10,8 @@
  *   5 = cambiar rol de usuario     (CSRF + admin.roles.manage)
  *   6 = activar/desactivar usuario (CSRF + admin.users.edit)
  *   7 = listar audit_log reciente  (admin.audit.view)
+ *   8 = listar obras activas       (admin.users.view)
+ *   9 = asignar obra a usuario     (director/admin)
  * ------------------------------------------------------------
  */
 
@@ -29,6 +31,12 @@ $accion  = isset($payload['accion']) ? (int)$payload['accion'] : 0;
 // Carga del usuario actual (aborta 401 si no hay sesion)
 $me = tf_current_user($pdo);
 
+function tf_admin_can_assign_obra(array $user) {
+    $roleCode = strtolower((string)($user['role']['code'] ?? ''));
+    $dirAcc = (int)($user['user_directionAcess'] ?? 0);
+    return in_array($roleCode, ['admin', 'director'], true) || $dirAcc === 1 || tf_has_permission('admin.users.edit', $user);
+}
+
 $data = [];
 
 switch ($accion) {
@@ -47,9 +55,12 @@ switch ($accion) {
                     v.role_nombre,
                     v.role_nivel,
                     v.permisos_count,
-                    u.user_role_id
+                    u.user_role_id,
+                    u.user_obra_id,
+                    o.obras_nombre AS user_obra_nombre
                FROM `v_users_full` v
                LEFT JOIN `users` u ON u.user_id = v.user_id
+                LEFT JOIN `obras` o ON o.obras_id = u.user_obra_id
                ORDER BY v.user_id DESC"
         );
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -191,6 +202,54 @@ switch ($accion) {
                LIMIT $limit"
         );
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        break;
+
+    case 8:
+        // Listar obras activas para asignacion
+        tf_require_permission($pdo, 'admin.users.view');
+        $stmt = $pdo->query(
+            "SELECT obras_id, obras_nombre
+               FROM `obras`
+              WHERE COALESCE(obras_estatus, 'ACTIVO') = 'ACTIVO'
+              ORDER BY obras_nombre ASC"
+        );
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        break;
+
+    case 9:
+        // Asignar obra unica a usuario (direccion/admin)
+        tf_csrf_validate($payload);
+        if (!tf_admin_can_assign_obra($me)) {
+            api_json_error('No tienes permisos para asignar obras', 403);
+        }
+
+        $id = api_require_positive_int($payload['user_id'] ?? 0, 'ID invalido');
+        $obraIdRaw = $payload['user_obra_id'] ?? null;
+        $obraId = ($obraIdRaw === null || $obraIdRaw === '' || (int)$obraIdRaw <= 0) ? null : (int)$obraIdRaw;
+
+        if ((int)$me['user_id'] === $id && $obraId === null) {
+            api_json_error('No puedes dejarte sin obra desde esta accion', 422);
+        }
+
+        if ($obraId !== null) {
+            $chk = $pdo->prepare("SELECT obras_id FROM `obras` WHERE obras_id = ? LIMIT 1");
+            $chk->execute([$obraId]);
+            if (!$chk->fetch()) {
+                api_json_error('La obra seleccionada no existe', 404);
+            }
+        }
+
+        $upd = $pdo->prepare("UPDATE `users` SET user_obra_id = ? WHERE user_id = ?");
+        if ($obraId === null) {
+            $upd->bindValue(1, null, PDO::PARAM_NULL);
+        } else {
+            $upd->bindValue(1, $obraId, PDO::PARAM_INT);
+        }
+        $upd->bindValue(2, $id, PDO::PARAM_INT);
+        $upd->execute();
+
+        tf_audit_log($pdo, 'user.obra.assign', 'admin', $id, ['user_obra_id' => $obraId]);
+        $data = ['ok' => true, 'user_obra_id' => $obraId];
         break;
 
     default:

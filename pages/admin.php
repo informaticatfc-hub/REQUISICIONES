@@ -38,6 +38,7 @@ $canCreate = tf_has_permission('admin.users.create', $__user);
 $canEdit   = tf_has_permission('admin.users.edit',   $__user);
 $canRole   = tf_has_permission('admin.roles.manage', $__user);
 $canAudit  = tf_has_permission('admin.audit.view',   $__user);
+$canAssignObra = in_array($usuario_rolCode, ['admin', 'director'], true) || ((int)($__user['user_directionAcess'] ?? 0) === 1);
 
 $tf_subbar_extra = $canCreate
     ? '<div class="tf-subbar-actions">
@@ -131,6 +132,7 @@ include __DIR__ . '/../includes/layout_top.php';
                         <th>Usuario</th>
                         <th>Nombre / Email</th>
                         <th>Rol</th>
+                        <th>Obra asignada</th>
                         <th>Estado</th>
                         <th>Ultimo acceso</th>
                         <th style="text-align:right">Acciones</th>
@@ -164,6 +166,10 @@ include __DIR__ . '/../includes/layout_top.php';
                             <?php endif; ?>
                         </td>
                         <td>
+                            <span v-if="u.user_obra_nombre">{{ u.user_obra_nombre }}</span>
+                            <small v-else class="text-muted">Sin obra</small>
+                        </td>
+                        <td>
                             <span class="tf-status"
                                   :class="u.user_estatus === 'ACTIVO' ? 'tf-status-active' : 'tf-status-inactive'">
                                 {{ u.user_estatus }}
@@ -178,6 +184,12 @@ include __DIR__ . '/../includes/layout_top.php';
                                     @click="openEdit(u)" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </button>
+                            <?php if ($canAssignObra): ?>
+                            <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm"
+                                    @click="openAssignObra(u)" title="Asignar obra">
+                                <i class="bi bi-building-add"></i>
+                            </button>
+                            <?php endif; ?>
                             <button type="button" class="tf-btn tf-btn-sm"
                                     :class="u.user_estatus === 'ACTIVO' ? 'tf-btn-danger' : 'tf-btn-success'"
                                     @click="toggleStatus(u)"
@@ -189,7 +201,7 @@ include __DIR__ . '/../includes/layout_top.php';
                         </td>
                     </tr>
                     <tr v-if="!filteredUsers.length">
-                        <td colspan="6" class="text-center text-muted py-4">
+                        <td colspan="7" class="text-center text-muted py-4">
                             <i class="bi bi-inbox" style="font-size:1.5rem"></i>
                             <div>Sin resultados</div>
                         </td>
@@ -295,6 +307,39 @@ include __DIR__ . '/../includes/layout_top.php';
         </div>
     </div>
 
+    <div class="modal fade" id="obraModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:14px;border:1px solid var(--tf-border)">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-building"></i>
+                        Asignar obra
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2 text-muted" v-if="obraTarget.user_nameUser">
+                        Usuario: <strong>{{ obraTarget.user_nameUser }}</strong>
+                    </p>
+                    <label class="form-label">Obra asignada</label>
+                    <select v-model="obraForm.user_obra_id" class="form-select">
+                        <option value="">Sin obra asignada</option>
+                        <option v-for="obra in obras" :key="obra.obras_id" :value="String(obra.obras_id)">
+                            {{ obra.obras_nombre }}
+                        </option>
+                    </select>
+                    <small class="text-muted d-block mt-2">La asignacion define la obra principal disponible para ese usuario.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="tf-btn tf-btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="tf-btn tf-btn-primary" @click="saveAssignedObra" :disabled="savingObra">
+                        <i class="bi bi-check-lg"></i> {{ savingObra ? 'Guardando...' : 'Guardar asignacion' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <?php
@@ -302,16 +347,19 @@ $tf_use_datatables = false;
 $tf_inline_script = <<<JS
     var url = "../api/crud_admin.php";
     var __canAudit = JSON.parse('<?= $canAudit ? 'true' : 'false' ?>');
+    var __canAssignObra = JSON.parse('<?= $canAssignObra ? 'true' : 'false' ?>');
 
     var app = new Vue({
         el: "#tfAdmin",
         data: {
             users: [],
             roles: [],
+            obras: [],
             audit: [],
             filterText: "",
             editing: false,
             saving: false,
+            savingObra: false,
             form: {
                 user_id: null,
                 user_nameUser: "",
@@ -320,7 +368,16 @@ $tf_inline_script = <<<JS
                 user_role_id: null,
                 user_password: ""
             },
-            modal: null
+            obraForm: {
+                user_id: null,
+                user_obra_id: ""
+            },
+            obraTarget: {
+                user_id: null,
+                user_nameUser: ""
+            },
+            modal: null,
+            obraModal: null
         },
         computed: {
             countActivos:   function () { return this.users.filter(function(u){return u.user_estatus === 'ACTIVO';}).length; },
@@ -340,6 +397,9 @@ $tf_inline_script = <<<JS
             loadAll: function () {
                 axios.post(url, { accion: 1 }).then(function(r){ this.users = r.data || []; }.bind(this));
                 axios.post(url, { accion: 2 }).then(function(r){ this.roles = r.data || []; }.bind(this));
+                if (__canAssignObra) {
+                    axios.post(url, { accion: 8 }).then(function(r){ this.obras = r.data || []; }.bind(this));
+                }
                 if (__canAudit) this.loadAudit();
             },
             loadAudit: function () {
@@ -367,6 +427,17 @@ $tf_inline_script = <<<JS
                     user_password: ""
                 };
                 this.modal.show();
+            },
+            openAssignObra: function (u) {
+                this.obraTarget = {
+                    user_id: u.user_id,
+                    user_nameUser: u.user_nameUser || ''
+                };
+                this.obraForm = {
+                    user_id: u.user_id,
+                    user_obra_id: u.user_obra_id ? String(u.user_obra_id) : ''
+                };
+                this.obraModal.show();
             },
             saveUser: function () {
                 if (this.saving) return;
@@ -398,6 +469,27 @@ $tf_inline_script = <<<JS
                         Swal.fire({icon:'error', title:'Error', text: msg});
                     });
             },
+            saveAssignedObra: function () {
+                if (this.savingObra) return;
+                this.savingObra = true;
+                axios.post(url, {
+                    accion: 9,
+                    user_id: this.obraForm.user_id,
+                    user_obra_id: this.obraForm.user_obra_id
+                })
+                    .then(function () {
+                        Swal.fire({icon:'success', title:'Obra asignada', timer:1200, showConfirmButton:false, toast:true, position:'top-end'});
+                        this.obraModal.hide();
+                        this.loadAll();
+                    }.bind(this))
+                    .catch(function (err) {
+                        var msg = (err.response && err.response.data && err.response.data.message) || 'No se pudo asignar la obra';
+                        Swal.fire({icon:'error', title:'Error', text: msg});
+                    })
+                    .finally(function () {
+                        this.savingObra = false;
+                    }.bind(this));
+            },
             toggleStatus: function (u) {
                 var nuevo = u.user_estatus === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
                 Swal.fire({
@@ -420,6 +512,7 @@ $tf_inline_script = <<<JS
         },
         mounted: function () {
             this.modal = new bootstrap.Modal(document.getElementById('userModal'));
+            this.obraModal = new bootstrap.Modal(document.getElementById('obraModal'));
             this.loadAll();
         }
     });

@@ -197,7 +197,8 @@ const appRequesition = new Vue({
         
         exportarExcel: function () {
             if (!window.XLSX || !window.XLSX.utils) {
-                Swal.fire('Excel no disponible', 'No fue posible cargar la libreria para exportar .xlsx.', 'warning');
+                this.exportarCsv();
+                Swal.fire('Excel no disponible', 'No fue posible cargar la libreria para exportar .xlsx. Se genero un CSV como alternativa.', 'info');
                 return;
             }
 
@@ -230,6 +231,44 @@ const appRequesition = new Vue({
                 wb,
                 'presion_semana_' + this.semana + '_dia_' + this.dia + '_obra_' + String(obraNombre).replace(/\s+/g, '_') + '.xlsx'
             );
+        },
+        exportarCsv: function () {
+            var obraNombre = (this.obraActiva.length && this.obraActiva[0].obras_nombre)
+                ? this.obraActiva[0].obras_nombre
+                : 'obra';
+            var rows = this.presiones
+                .filter(function (p) {
+                    return p.HojaEstatus === 'LIGADA' || p.HojaEstatus === 'AUTORIZADA' || p.HojaEstatus === 'PAGADA';
+                })
+                .map((p) => {
+                    return [
+                        p.clave || '',
+                        p.NumReq || '',
+                        p.proveedor || '',
+                        p.concepto || '',
+                        this.toNumber(p.total),
+                        this.toNumber(p.adeudo),
+                        p.formaPago || '',
+                        p.Fecha || '',
+                        p.Banco || ''
+                    ];
+                });
+
+            var csv = [['CLAVE','NUM_REQUISICION','PROVEEDOR','CONCEPTO','ADEUDO','NETO_A_PAGAR','FORMA_PAGO','FECHA_PAGO','BANCO_PAGO']];
+            rows.forEach(function (row) { csv.push(row); });
+
+            var content = csv.map(function (row) {
+                return row.map(function (value) {
+                    return '"' + String(value).replace(/"/g, '""') + '"';
+                }).join(',');
+            }).join('\n');
+
+            var blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'presion_semana_' + this.semana + '_dia_' + this.dia + '_obra_' + String(obraNombre).replace(/\s+/g, '_') + '.csv';
+            link.click();
+            URL.revokeObjectURL(link.href);
         },
         cerrarPresion: async function () {
             const swalWithBootstrapButtons = await Swal.mixin({

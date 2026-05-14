@@ -34,7 +34,7 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
     <!-- esta es la llamada local-->
     <link rel="stylesheet" href="../assets/lib/bootstrap/css/bootstrap.min.css">
     <!--llamar a mi documento de CSS-->
-    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/main.css?v=fase08i">
     <style>
         .director-top-layout .app-sidebar { display: none !important; }
         .director-top-layout .app-main { left: 0 !important; }
@@ -313,8 +313,8 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
                                                 <button class="btn btn-danger" type="button" @click="rechazarTodoObra(index)">Rechazar todo</button>
                                                 <button class="btn btn-secondary" type="button" @click="restaurarCambiosObra(index)">Restaurar</button>
                                                 <button class="btn btn-secondary" type="button" @click="exportarCsvObra(index)">Exportar CSV</button>
-                                                <button class="btn btn-secondary" type="button" @click="exportarExcelObra(index)">Exportar Excel</button>
-                                                <button class="btn btn-secondary" type="button" @click="triggerImportExcel(index)">Importar Excel</button>
+                                                <button class="btn btn-secondary" type="button" @click="exportarExcelObra(index)">Exportar XLSX</button>
+                                                <button class="btn btn-secondary" type="button" @click="triggerImportExcel(index)">Importar XLSX/CSV</button>
                                                 <input type="file" :id="'excelImport'+index" accept=".xlsx,.csv" class="d-none" @change="importarExcelObra($event,index)">
                                             </div>
                                             <div class="excel-table-wrap">
@@ -390,7 +390,7 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <!-- scripts constume-->
-    <script src="../assets/js/all_presiones.js?v=fase07f"></script>
+    <script src="../assets/js/all_presiones.js?v=fase08h"></script>
 </body>
 
 </html>

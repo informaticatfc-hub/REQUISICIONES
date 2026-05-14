@@ -21,7 +21,6 @@ $tf_active_nav     = 'requisiciones';
 $tf_breadcrumb     = [
     ['Inicio', './index.php'],
     ['Requisiciones', './requisiciones.php'],
-    ['Presiones', './presiones.php'],
     ['Nueva requisicion', '#'],
 ];
 $tf_user = [
@@ -50,8 +49,8 @@ include __DIR__ . '/../includes/layout_top.php';
             </p>
         </div>
         <div class="tf-page-header-actions">
-            <a href="./presiones.php" class="tf-btn tf-btn-ghost tf-btn-sm">
-                <i class="bi bi-arrow-left"></i> Volver a presiones
+            <a href="./requisiciones.php" class="tf-btn tf-btn-ghost tf-btn-sm">
+                <i class="bi bi-arrow-left"></i> Volver a requisiciones
             </a>
         </div>
     </header>
@@ -232,7 +231,7 @@ include __DIR__ . '/../includes/layout_top.php';
             </div>
 
             <div class="d-flex justify-content-end gap-2 mt-3">
-                <a href="./presiones.php" class="tf-btn tf-btn-ghost">
+                <a href="./requisiciones.php" class="tf-btn tf-btn-ghost">
                     Cancelar
                 </a>
                 <button type="button" class="tf-btn tf-btn-success" @click="agregarRequisicion" :disabled="!puedeGuardar">

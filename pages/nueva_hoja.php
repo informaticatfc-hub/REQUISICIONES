@@ -22,7 +22,7 @@ include_once '../validarSesion.php';
     <!-- esta es la llamada local-->
     <link rel="stylesheet" href="../assets/lib/bootstrap/css/bootstrap.min.css">
     <!--llamar a mi documento de CSS-->
-    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/main.css?v=fase08i">
     <title>NUEVA REQUISICION</title>
 </head>
 

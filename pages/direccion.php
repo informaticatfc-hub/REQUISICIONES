@@ -34,7 +34,7 @@ if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
     <!-- esta es la llamada local-->
     <link rel="stylesheet" href="../assets/lib/bootstrap/css/bootstrap.min.css">
     <!--llamar a mi documento de CSS-->
-    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/main.css?v=fase08i">
     <style>
         .director-top-layout .app-sidebar { display: none !important; }
         .director-top-layout .app-main { left: 0 !important; }

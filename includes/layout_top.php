@@ -32,7 +32,7 @@ $tf_active_nav     = $tf_active_nav     ?? '';
 $tf_breadcrumb     = $tf_breadcrumb     ?? [];
 $tf_user           = $tf_user           ?? ['name' => '', 'role' => '', 'initials' => '?'];
 $tf_show_direccion = $tf_show_direccion ?? false;
-$tf_show_admin     = $tf_show_admin     ?? false;
+$tf_show_admin     = $tf_show_admin     ?? in_array('admin.users.view', (array)($tf_user['permissions'] ?? []), true);
 $tf_show_subbar    = $tf_show_subbar    ?? true;
 $tf_role_code      = strtolower((string)($tf_user['roleCode'] ?? ''));
 $tf_is_director    = in_array($tf_role_code, ['director', 'direccion'], true);

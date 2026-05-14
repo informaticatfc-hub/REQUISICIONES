@@ -24,7 +24,7 @@ include_once '../validarSesion.php';
     <!--Esta es la llamada CSS de data table-->
     <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css">
     <!--llamar a mi documento de CSS-->
-    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/main.css?v=fase08i">
     <title>ENLAZAR REQUISICIONES</title>
 </head>
 
