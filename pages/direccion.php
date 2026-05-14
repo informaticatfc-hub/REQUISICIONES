@@ -110,8 +110,15 @@ include_once '../validarSesion.php';
                         <div class="module-card-icon">
                             <img src="../images/icons/requisiciones.svg" alt="presiones">
                         </div>
-                        <span class="module-card-label">Presiones de Obras</span>
-                        <span class="module-card-sub">Autoriza y revisa todas las presiones pendientes de pago</span>
+                        <span class="module-card-label">Autorizacion Presiones</span>
+                        <span class="module-card-sub">Gestion operativa para aprobar, rechazar y ajustar pagos por obra</span>
+                    </button>
+                    <button type="button" class="module-card" @click="enterReportesKpi">
+                        <div class="module-card-icon">
+                            <img src="../images/icons/obras.svg" alt="reportes-kpi">
+                        </div>
+                        <span class="module-card-label">Reportes KPI</span>
+                        <span class="module-card-sub">Analitica por obra, semana, mes y acumulado con filtros exportables</span>
                     </button>
                 </div>
             </div>

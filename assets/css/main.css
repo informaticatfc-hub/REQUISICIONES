@@ -268,8 +268,8 @@ a.stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-
 .obras-chip-dot{width:8px;height:8px;border-radius:50%;background:var(--blue-500)}
 
 /* OPS PAGES */
-.ops-hero-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px}
-.ops-hero-grid .quick-tile{min-height:110px}
+.ops-hero-grid{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+.ops-hero-grid .quick-tile{min-height:100px}
 .ops-hero-grid .quick-tile-value{font-size:clamp(1.25rem,2.3vw,1.8rem)}
 
 /* ACCORDION */
@@ -347,6 +347,9 @@ body.login-page{min-height:100vh;margin:0;padding:0!important;background:var(--s
     .sidebar-toggle-label{display:none}
     .sidebar-toggle-btn{min-width:38px;padding:0 10px;margin-right:8px}
     .obras-hero-grid{grid-template-columns:1fr}
+    .ops-hero-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:575px){
     .ops-hero-grid{grid-template-columns:1fr}
 }
 @media(max-width:479px){
