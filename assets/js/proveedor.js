@@ -1,3 +1,13 @@
+/**
+ * @deprecated Fase 4c
+ * ------------------------------------------------------------
+ * Este archivo dejo de usarse cuando pages/proveedores.php se migro
+ * al layout v4 (la logica Vue ahora va inline en el PHP).
+ *
+ * Se conserva aqui temporalmente como referencia historica.
+ * No se carga desde ninguna pagina. Eliminar en una fase posterior.
+ * ------------------------------------------------------------
+ */
 var url = "../api/crud_proveedor.php";
 var url2 = ".";
 
