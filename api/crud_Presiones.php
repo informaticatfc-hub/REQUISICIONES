@@ -14,6 +14,14 @@ $fecha = isset($_POST['fecha']) ? trim((string)$_POST['fecha']) : '';
 $obra = $_POST['obra'] ?? 0;
 $alias = isset($_POST['alias']) ? trim((string)$_POST['alias']) : '';
 
+// --- RBAC + CSRF (Fase 3) ---
+if ($accion === 3) {
+    api_require_csrf($_POST);
+    tf_require_permission($conexion, 'presiones.create');
+} else {
+    tf_require_permission($conexion, 'presiones.view');
+}
+
 $currentUser = api_get_current_user($conexion);
 $data = array();
 
@@ -100,6 +108,13 @@ switch ($accion) {
                 'presion_id' => $presionId,
                 'presion_nombre' => $nombrePresion,
             );
+            tf_audit_log($conexion, 'presiones.create', 'presiones', $presionId, array(
+                'obra' => $obraId,
+                'semana' => $semana,
+                'dia' => $dia,
+                'alias' => $alias,
+                'nombre' => $nombrePresion,
+            ));
         } catch (Throwable $e) {
             if ($conexion->inTransaction()) {
                 $conexion->rollBack();

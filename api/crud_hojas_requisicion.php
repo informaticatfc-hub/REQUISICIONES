@@ -15,6 +15,21 @@ $clave =   (isset($_POST['clave'])) ? $_POST['clave'] : '';
 $IdReq =   (isset($_POST['IdReq'])) ? $_POST['IdReq'] : '';
 $idHoja =   (isset($_POST['idHoja'])) ? $_POST['idHoja'] : '';
 $id_presion = (isset($_POST['id_presion'])) ? $_POST['id_presion'] : ((isset($_POST['idPresion'])) ? $_POST['idPresion'] : '');
+
+// --- RBAC + CSRF (Fase 3) ---
+// case 6 = INSERT requisicion (create); case 8 = DELETE hoja (delete).
+// El resto son lecturas.
+$accionInt = (int)$accion;
+if ($accionInt === 6) {
+    api_require_csrf($_POST);
+    tf_require_permission($conexion, 'requisiciones.create');
+} elseif ($accionInt === 8) {
+    api_require_csrf($_POST);
+    tf_require_permission($conexion, 'requisiciones.delete');
+} else {
+    tf_require_permission($conexion, 'requisiciones.view');
+}
+
 $currentUser = api_get_current_user($conexion);
 $data = array();
 
@@ -107,7 +122,6 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
    case 8:
-    api_require_direction_access($currentUser);
     $conexion->beginTransaction();
     try {
         $stmt1 = $conexion->prepare("DELETE FROM itemrequisicion WHERE itemRequisicion_idHoja = :idHoja");
@@ -120,6 +134,7 @@ switch ($accion) {
 
         $conexion->commit();
         $data = ['status' => 'ok'];
+        tf_audit_log($conexion, 'requisiciones.hoja.delete', 'hojasrequisicion', (int)$idHoja, null);
     } catch (Exception $e) {
         $conexion->rollBack();
         $data = ['status' => 'error', 'message' => $e->getMessage()];

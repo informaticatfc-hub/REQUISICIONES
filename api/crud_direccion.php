@@ -1,22 +1,25 @@
 <?php
 include_once 'conexion.php';
+include_once 'auth.php';
 $objeto = new Conexion();
 $conexion = $objeto->Conectar();
 
 //Conexion con axios, por parametro POST
-$_POST = json_decode(file_get_contents("php://input"), true);
+$_POST = api_get_request_data();
 
-$accion = (isset($_POST['accion'])) ? $_POST['accion'] : '';
-$id_user = (isset($_POST['id_user'])) ? $_POST['id_user'] : '';
+$accion = (isset($_POST['accion'])) ? (int)$_POST['accion'] : 0;
 $obra = (isset($_POST['obra'])) ? $_POST['obra'] : '';
+
+// --- RBAC (Fase 3) ---
+// Solo lecturas para el panel de direccion.
+tf_require_permission($conexion, 'direccion.view');
+$currentUser = api_get_current_user($conexion);
 $data = array();
 
 switch ($accion) {
     case 1:
-        $consulta = "SELECT * FROM `users` WHERE `user_id` = ?";
-        $resultado = $conexion->prepare($consulta);
-        $resultado->execute(array((int)$id_user));
-        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
+        // Antes leia $_POST['id_user'] (impersonacion). Ahora devuelve el usuario de sesion.
+        $data = array($currentUser);
         break;
     case 2:
         $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' ORDER BY `obras_nombre`";

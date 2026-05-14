@@ -27,6 +27,29 @@ $idPresion = (isset($_POST['idPresion'])) ? $_POST['idPresion'] : '';
 $comentarios = (isset($_POST['comentarios'])) ? $_POST['comentarios'] : '';
 $nuevaFormaPago = (isset($_POST['formaPago'])) ? $_POST['formaPago'] : '';
 $id_Prov = (isset($_POST['id_Prov'])) ? $_POST['id_Prov'] : '';
+
+// --- RBAC + CSRF (Fase 3) ---
+// Writes: 3 (edit item), 4 (delete item), 6 (insert/get requisicion), 7 (mover a REVISION),
+//         11 (ligar requisicion -> direccion.authorize), 12 (regresar a PENDIENTE),
+//         13 (cambiar forma pago + recalcular), 15 (cambiar proveedor).
+// Lecturas: 1, 2, 5, 8, 9, 10, 14.
+$accionInt = (int)$accion;
+$writeActions = array(3, 4, 6, 7, 11, 12, 13, 15);
+if (in_array($accionInt, $writeActions, true)) {
+    api_require_csrf($_POST);
+    if ($accionInt === 11) {
+        // Ligado de requisicion / autorizacion direccion
+        tf_require_permission($conexion, 'requisiciones.authorize');
+    } elseif ($accionInt === 4) {
+        // Delete item de hoja
+        tf_require_permission($conexion, 'requisiciones.edit');
+    } else {
+        tf_require_permission($conexion, 'requisiciones.edit');
+    }
+} else {
+    tf_require_permission($conexion, 'requisiciones.view');
+}
+
 $currentUser = api_get_current_user($conexion);
 
 switch ($accion) {
@@ -56,6 +79,12 @@ switch ($accion) {
         $resultado->bindValue(':id', (int)$id, PDO::PARAM_INT);
         $resultado->execute();
         $data = actualizarTotalHoja($conexion, (int)$idHoja);
+        tf_audit_log($conexion, 'requisiciones.item.edit', 'itemrequisicion', (int)$id, array(
+            'id_hoja' => (int)$idHoja,
+            'producto' => $producto,
+            'precio' => $precio,
+            'cantidad' => $cantidad,
+        ));
         break;
     case 4:
         $consulta = "DELETE FROM `itemrequisicion` WHERE `itemRequisicion_id` = :id";
@@ -63,6 +92,9 @@ switch ($accion) {
         $resultado->bindValue(':id', (int)$id, PDO::PARAM_INT);
         $resultado->execute();
         $data = actualizarTotalHoja($conexion, (int)$idHoja);
+        tf_audit_log($conexion, 'requisiciones.item.delete', 'itemrequisicion', (int)$id, array(
+            'id_hoja' => (int)$idHoja,
+        ));
         break;
     case 5:
         $consulta = "SELECT * FROM `hojasrequisicion` INNER JOIN emisores ON hojasrequisicion.hojaRequisicion_empresa = emisores.emisor_id INNER JOIN provedores ON hojasrequisicion.hojaRequisicion_proveedor = provedores.proveedor_id WHERE hojaRequisicion_id = :id_hoja";
@@ -86,7 +118,14 @@ switch ($accion) {
         $resultado->bindValue(':precio', $precio, PDO::PARAM_STR);
         $resultado->bindValue(':cantidad', $cantidad, PDO::PARAM_STR);
         $resultado->execute();
+        $newItemId = (int)$conexion->lastInsertId();
         $data = actualizarTotalHoja($conexion, (int)$idHoja);
+        tf_audit_log($conexion, 'requisiciones.item.create', 'itemrequisicion', $newItemId, array(
+            'id_hoja' => (int)$idHoja,
+            'producto' => $producto,
+            'precio' => $precio,
+            'cantidad' => $cantidad,
+        ));
         break;
     case 7:
         $consulta =  "
@@ -101,6 +140,9 @@ switch ($accion) {
         $resultado->bindValue(':id', $idReq, PDO::PARAM_INT);
         $resultado->execute();
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
+        tf_audit_log($conexion, 'requisiciones.hoja.toRevision', 'hojasrequisicion', (int)$idReq, array(
+            'comentarios' => $comentarios,
+        ));
         break;
     case 8:
         $consulta = "SELECT `obras_nombre`,`ciudadesObras_nombre` FROM `obras` JOIN estadosobra ON estadosobra.ciudadesObras_id = obras.obras_cuidad WHERE `obras_id` = :obra";
@@ -123,7 +165,6 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 11:
-        api_require_direction_access($currentUser);
         try {
             // Inicia transacción
             $conexion->beginTransaction();
@@ -181,6 +222,13 @@ switch ($accion) {
                     ? 'Registro ya existía, se actualizó hojaRequisicion'
                     : 'Registro insertado y hojaRequisicion actualizada'
             ];
+            tf_audit_log($conexion, 'requisiciones.ligar', 'requisicionesligadas', (int)$idHoja, array(
+                'id_presion' => (int)$idPresion,
+                'id_req' => (int)$idReq,
+                'id_hoja' => (int)$idHoja,
+                'total' => $total,
+                'ya_existia' => $registroExiste,
+            ));
         } catch (Exception $e) {
             // Revertir cambios si algo falla
             $conexion->rollBack();
@@ -193,12 +241,14 @@ switch ($accion) {
         }
         break;
     case 12:
-        api_require_direction_access($currentUser);
         $consulta = "UPDATE `hojasrequisicion` SET `hojaRequisicion_estatus` = 'PENDIENTE', `hojarequisicion_comentariosValidacion` = :comentarios WHERE `hojasrequisicion`.`hojaRequisicion_id` = :id_hoja";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':comentarios', $comentarios, PDO::PARAM_STR);
         $resultado->bindValue(':id_hoja', (int)$idHoja, PDO::PARAM_INT);
         $resultado->execute();
+        tf_audit_log($conexion, 'requisiciones.hoja.toPendiente', 'hojasrequisicion', (int)$idHoja, array(
+            'comentarios' => $comentarios,
+        ));
         break;
     case 13:
         try {
@@ -262,6 +312,11 @@ switch ($accion) {
                 'mensaje' => 'Forma de pago y totales actualizados correctamente',
                 'total_actualizado' => $totalCambio
             ];
+            tf_audit_log($conexion, 'requisiciones.hoja.changeFormaPago', 'hojasrequisicion', (int)$idHoja, array(
+                'nueva_forma_pago' => $nuevaFormaPago,
+                'iva' => $iva,
+                'total_actualizado' => $totalCambio,
+            ));
         } catch (Exception $e) {
             // Revertir cambios si ocurre un error
             $conexion->rollBack();
@@ -291,6 +346,9 @@ switch ($accion) {
 
         $resultado->execute();
         $data = 1;
+        tf_audit_log($conexion, 'requisiciones.hoja.changeProveedor', 'hojasrequisicion', (int)$idHoja, array(
+            'id_proveedor' => (int)$id_Prov,
+        ));
         break;
 }
 
