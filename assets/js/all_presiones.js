@@ -357,7 +357,7 @@ const appRequesition = new Vue({
                             <div class="row mb-3">
                                 <div class="col-12">
                                     <label class="form-label">Porcentaje a Aplicar:</label>
-                                    <div class="input-group mb-3"">
+                                    <div class="input-group mb-3">
                                         <input type="text" class="form-control" id="porcentaje">
                                         <span class="input-group-text fw-bold" id="basic-addon2"> % </span>
                                     </div>
@@ -498,7 +498,7 @@ const appRequesition = new Vue({
             var obra = this.presiones[indicePresion];
             (obra.Presion_Obra || []).forEach((row) => {
                 row.adeudo = this.toNumber(row.total);
-                row.Observaciones = row.Observaciones || 'Autorizado al 100% (masivo).';
+                row.Observaciones = 'Autorizado por accion masiva.';
                 this.marcarFilaEditada(row);
             });
             this.programarGuardadoBorrador();
@@ -507,7 +507,7 @@ const appRequesition = new Vue({
             var obra = this.presiones[indicePresion];
             (obra.Presion_Obra || []).forEach((row) => {
                 row.adeudo = Math.round(this.toNumber(row.total) * 0.9 * 100) / 100;
-                row.Observaciones = row.Observaciones || 'Descuento masivo del 10% aplicado.';
+                row.Observaciones = 'Ajuste masivo -10% aplicado.';
                 this.marcarFilaEditada(row);
             });
             this.programarGuardadoBorrador();
@@ -516,7 +516,7 @@ const appRequesition = new Vue({
             var obra = this.presiones[indicePresion];
             (obra.Presion_Obra || []).forEach((row) => {
                 row.adeudo = 0;
-                row.Observaciones = row.Observaciones || 'Rechazado de forma masiva.';
+                row.Observaciones = 'Rechazado por accion masiva.';
                 this.marcarFilaEditada(row);
             });
             this.programarGuardadoBorrador();
@@ -561,6 +561,86 @@ const appRequesition = new Vue({
             link.download = 'presiones_' + (obra.Nombre_Obra || 'obra').replace(/\s+/g, '_') + '.csv';
             link.click();
             URL.revokeObjectURL(link.href);
+        },
+        exportarExcelObra: function (indicePresion) {
+            if (!window.XLSX) {
+                Swal.fire('Excel no disponible', 'No se cargo la libreria para exportar Excel.', 'warning');
+                return;
+            }
+
+            var obra = this.presiones[indicePresion];
+            var rows = obra.Presion_Obra || [];
+            var data = rows.map((row) => ({
+                CLAVE: row.clave || '',
+                NUM_REQ: row.NumReq || '',
+                PROVEEDOR: row.proveedor || '',
+                CONCEPTO: row.concepto || '',
+                ADEUDO_PROPUESTO: this.toNumber(row.total),
+                PAGO_AUTORIZADO: this.toNumber(row.adeudo),
+                FORMULA: row.formula || '',
+                OBSERVACIONES: row.Observaciones || '',
+                FORMA_PAGO: row.formaPago || ''
+            }));
+
+            var ws = XLSX.utils.json_to_sheet(data);
+            var wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Autorizacion');
+            XLSX.writeFile(wb, 'autorizacion_' + (obra.Nombre_Obra || 'obra').replace(/\s+/g, '_') + '.xlsx');
+        },
+        triggerImportExcel: function (indicePresion) {
+            var input = document.getElementById('excelImport' + indicePresion);
+            if (input) input.click();
+        },
+        importarExcelObra: function (event, indicePresion) {
+            if (!window.XLSX) {
+                Swal.fire('Excel no disponible', 'No se cargo la libreria para importar Excel.', 'warning');
+                return;
+            }
+
+            var file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            var obra = this.presiones[indicePresion];
+            var rows = obra.Presion_Obra || [];
+
+            var reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    var data = new Uint8Array(e.target.result);
+                    var wb = XLSX.read(data, { type: 'array' });
+                    var sheetName = wb.SheetNames[0];
+                    var ws = wb.Sheets[sheetName];
+                    var imported = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+                    var byKey = {};
+                    rows.forEach((row) => {
+                        byKey[String(row.clave || '').trim().toUpperCase()] = row;
+                    });
+
+                    var applied = 0;
+                    imported.forEach((item) => {
+                        var key = String(item.CLAVE || '').trim().toUpperCase();
+                        if (!key || !byKey[key]) return;
+
+                        var target = byKey[key];
+                        var pago = this.toNumber(item.PAGO_AUTORIZADO);
+                        target.adeudo = pago;
+                        target.formula = String(item.FORMULA || target.formula || '');
+                        target.Observaciones = String(item.OBSERVACIONES || target.Observaciones || '');
+                        this.marcarFilaEditada(target);
+                        applied += 1;
+                    });
+
+                    this.programarGuardadoBorrador();
+                    Swal.fire('Importacion completada', 'Filas actualizadas: ' + applied, 'success');
+                } catch (error) {
+                    Swal.fire('Error de importacion', 'No fue posible leer el archivo Excel.', 'error');
+                } finally {
+                    event.target.value = '';
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
         },
         mostrarAyudaRapida: function () {
             Swal.fire({
@@ -790,8 +870,12 @@ const appRequesition = new Vue({
             this.programarGuardadoBorrador();
         },
         aplicarPorcentaje: function (indicePresion, indiceHoja, formValues) {
-            const porcentaje = parseInt(formValues["porcentaje"]);
+            const porcentaje = parseFloat(String(formValues["porcentaje"] || '').replace(',', '.'));
             const accion = formValues["accion"];
+            if (isNaN(porcentaje) || porcentaje < 0) {
+                Swal.fire('Porcentaje invalido', 'Ingresa un porcentaje numerico mayor o igual a 0.', 'warning');
+                return;
+            }
             const cantidadDecimal = this.convertirAdecimalEntero(porcentaje);
 
             let adeudoActual = this.toNumber(this.presiones[indicePresion]["Presion_Obra"][indiceHoja]["adeudo"]);
@@ -802,6 +886,12 @@ const appRequesition = new Vue({
                 accion === "Inc"
                     ? adeudoActual + cantidadAccion
                     : adeudoActual - cantidadAccion;
+            if (this.presiones[indicePresion]["Presion_Obra"][indiceHoja]["adeudo"] < 0) {
+                this.presiones[indicePresion]["Presion_Obra"][indiceHoja]["adeudo"] = 0;
+            }
+            this.presiones[indicePresion]["Presion_Obra"][indiceHoja]["Observaciones"] = accion === "Inc"
+                ? 'Ajuste manual masivo por incremento porcentual.'
+                : 'Ajuste manual masivo por descuento porcentual.';
             this.marcarFilaEditada(this.presiones[indicePresion]["Presion_Obra"][indiceHoja]);
             this.programarGuardadoBorrador();
         }

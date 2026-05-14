@@ -1,5 +1,17 @@
 <?php
 include_once '../validarSesion.php';
+require_once __DIR__ . '/../api/rbac.php';
+require_once __DIR__ . '/../api/conexion.php';
+
+$__pdo  = (new Conexion())->Conectar();
+$__user = tf_current_user($__pdo);
+$__roleCode = $__user['role']['code'] ?? '';
+$__dirAcc = (int)($__user['user_directionAcess'] ?? 0);
+
+if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
+    header('Location: ./index.php');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -60,88 +72,6 @@ include_once '../validarSesion.php';
             font-size: 0.84rem;
             vertical-align: middle;
         }
-        .executive-grid {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 12px;
-            margin-bottom: 14px;
-        }
-        .executive-card {
-            background: #fff;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            box-shadow: var(--shadow-xs);
-            padding: 14px;
-        }
-        .executive-card .label {
-            font-size: 0.74rem;
-            text-transform: uppercase;
-            color: #475569;
-            font-weight: 700;
-            letter-spacing: .04em;
-        }
-        .executive-card .value {
-            font-size: 1.35rem;
-            color: #0f172a;
-            font-weight: 800;
-            margin-top: 4px;
-        }
-        .executive-card .sub {
-            font-size: 0.8rem;
-            color: #64748b;
-            margin-top: 4px;
-        }
-        .kpi-block-title {
-            font-size: 0.95rem;
-            font-weight: 800;
-            color: #0f172a;
-            margin-bottom: 8px;
-            letter-spacing: -0.01em;
-        }
-        .semaforo-dot {
-            display: inline-flex;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-        .semaforo-ok { background: #16a34a; }
-        .semaforo-warn { background: #d97706; }
-        .semaforo-risk { background: #dc2626; }
-        .var-positive { color: #16a34a; font-weight: 700; }
-        .var-negative { color: #dc2626; font-weight: 700; }
-        .var-neutral { color: #64748b; font-weight: 700; }
-        .executive-alert-box {
-            background: #fff;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            box-shadow: var(--shadow-xs);
-            padding: 12px;
-            margin-bottom: 14px;
-        }
-        .executive-alert-item {
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 8px;
-            background: #f8fafc;
-            font-size: 0.84rem;
-        }
-        .threshold-chip {
-            display: inline-flex;
-            align-items: center;
-            padding: 3px 10px;
-            border-radius: 999px;
-            border: 1px solid #cbd5e1;
-            font-size: 0.74rem;
-            font-weight: 700;
-            margin-right: 6px;
-            color: #334155;
-            background: #fff;
-        }
-        @media (max-width: 992px) {
-            .executive-grid { grid-template-columns: 1fr; }
-        }
     </style>
     <title>Reportes KPI - Direccion</title>
 </head>
@@ -149,11 +79,7 @@ include_once '../validarSesion.php';
 <body class="app-layout director-top-layout">
     <div id="AppKpiDireccion">
         <div class="d-flex flex-column flex-shrink-0 h-100 position-fixed top-0 end-0 app-main">
-            <nav class="navbar app-navbar">
-                <div class="container-fluid">
-                    <span class="navbar-brand text-light text-center w-100 fw-bolder">The Fuentes Corporation Workspace</span>
-                </div>
-            </nav>
+            <?php include __DIR__ . '/../includes/legacy_navbar.php'; ?>
             <nav class="nav shadow-sm d-flex align-items-center" id="navtab" aria-label="breadcrumb" aria-current="page">
                 <ol class="breadcrumb py-2 px-3 my-0">
                     <li class="breadcrumb-item"><a href="./index.php"><img src="../images/icons/home.svg" alt="home" height="24" width="24"><span>Inicio</span></a></li>
@@ -161,13 +87,6 @@ include_once '../validarSesion.php';
                     <li class="breadcrumb-item active" aria-current="page"><span>Reportes KPI</span></li>
                 </ol>
             </nav>
-
-            <div class="director-shortcuts">
-                <button type="button" class="btn btn-secondary" @click="goDireccion">Menu Direccion</button>
-                <button type="button" class="btn btn-secondary" @click="goAutorizacion">Autorizacion Presiones</button>
-                <button type="button" class="btn btn-secondary" @click="goIndex">Inicio</button>
-                <button type="button" class="btn btn-danger ms-auto" @click="goLogout">Cerrar Sesion</button>
-            </div>
 
             <div class="container page-shell overflow-auto page-content">
                 <div class="page-hdr">
@@ -263,7 +182,7 @@ include_once '../validarSesion.php';
     <script src="../assets/lib/sweetalert/sweetalert2.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-    <script src="../assets/js/reportes_kpi.js?v=fase07b"></script>
+    <script src="../assets/js/reportes_kpi.js?v=fase07e"></script>
 </body>
 
 </html>

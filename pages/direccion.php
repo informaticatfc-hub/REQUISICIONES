@@ -1,5 +1,17 @@
 <?php
 include_once '../validarSesion.php';
+require_once __DIR__ . '/../api/rbac.php';
+require_once __DIR__ . '/../api/conexion.php';
+
+$__pdo  = (new Conexion())->Conectar();
+$__user = tf_current_user($__pdo);
+$__roleCode = $__user['role']['code'] ?? '';
+$__dirAcc = (int)($__user['user_directionAcess'] ?? 0);
+
+if (!in_array($__roleCode, ['director', 'admin'], true) && $__dirAcc !== 1) {
+    header('Location: ./index.php');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -21,14 +33,27 @@ include_once '../validarSesion.php';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">-->
     <!-- esta es la llamada local-->
     <link rel="stylesheet" href="../assets/lib/bootstrap/css/bootstrap.min.css">
-    <!--Esta es la llamada CSS de data table-->
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css">
     <!--llamar a mi documento de CSS-->
     <link rel="stylesheet" href="../assets/css/main.css">
+    <style>
+        .director-top-layout .app-sidebar { display: none !important; }
+        .director-top-layout .app-main { left: 0 !important; }
+        .director-shortcuts {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 24px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: calc(var(--topbar-h) + 42px);
+            z-index: 89;
+        }
+    </style>
     <title>Menu de Obras</title>
 </head>
 
-<body class="app-layout">
+<body class="app-layout director-top-layout">
     <div id="AppDireccion">
         <!--sidebar-->
         <div class="d-flex flex-column flex-shrink-0 p-3 text-white position-fixed top-0 start-0 h-100 app-sidebar" id="sidebar">
@@ -81,12 +106,8 @@ include_once '../validarSesion.php';
             </div>
         </div>
         <div class="d-flex flex-column flex-shrink-0 h-100 position-fixed top-0 end-0 app-main">
-            <!--Navbar-->
-            <nav class="navbar app-navbar">
-                <div class="container-fluid">
-                    <span class="navbar-brand text-light text-center w-100 fw-bolder">The Fuentes Corporation Workspace</span>
-                </div>
-            </nav>
+            <!--Navbar unificada-->
+            <?php include __DIR__ . '/../includes/legacy_navbar.php'; ?>
             <nav class="nav shadow-sm d-flex align-items-center" id="navtab" aria-label="breadcrumb" aria-current="page">
                 <ol class="breadcrumb py-2 px-3 my-0">
                     <li class="breadcrumb-item">
@@ -102,23 +123,40 @@ include_once '../validarSesion.php';
                 <div class="page-hdr">
                     <div class="page-hdr-left">
                         <h2 class="page-title">Direccion</h2>
-                        <p class="page-lead">Panel de administracion y autorizacion de The Fuentes Corporation.</p>
+                        <p class="page-lead">Selecciona primero la obra activa; despues podras ejecutar movimientos de requisiciones y presiones.</p>
+                    </div>
+                </div>
+                <div class="table-wrapper p-3 mb-3">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-lg-8">
+                            <label class="form-label">Obra activa para flujo de trabajo</label>
+                            <select class="form-select" v-model="selectedObraId">
+                                <option value="">Selecciona una obra</option>
+                                <option v-for="obra in obrasLista" :key="obra.obras_id" :value="String(obra.obras_id)">{{obra.obras_nombre}}</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-4 d-grid">
+                            <button type="button" class="btn btn-primary" @click="seleccionarObraActiva">Confirmar obra activa</button>
+                        </div>
+                        <div class="col-12" v-if="selectedObraNombre">
+                            <small class="text-success fw-semibold">Obra activa: {{selectedObraNombre}}</small>
+                        </div>
                     </div>
                 </div>
                 <div class="module-grid">
-                    <button type="button" class="module-card" @click="enterAllPresiones">
+                    <button type="button" class="module-card" @click="enterAllPresiones" :disabled="!selectedObraId">
                         <div class="module-card-icon">
                             <img src="../images/icons/requisiciones.svg" alt="presiones">
                         </div>
                         <span class="module-card-label">Autorizacion Presiones</span>
                         <span class="module-card-sub">Gestion operativa para aprobar, rechazar y ajustar pagos por obra</span>
                     </button>
-                    <button type="button" class="module-card" @click="enterReportesKpi">
+                    <button type="button" class="module-card" @click="enterReportesKpi" :disabled="!selectedObraId">
                         <div class="module-card-icon">
                             <img src="../images/icons/obras.svg" alt="reportes-kpi">
                         </div>
                         <span class="module-card-label">Reportes KPI</span>
-                        <span class="module-card-sub">Analitica por obra, semana, mes y acumulado con filtros exportables</span>
+                        <span class="module-card-sub">Desglose profesional de gastos por fecha para la obra activa</span>
                     </button>
                 </div>
             </div>
@@ -137,12 +175,8 @@ include_once '../validarSesion.php';
     <!--scripts de sweetalert-->
     <script src="../assets/lib/sweetalert/sweetalert2.min.js"></script>
 
-    <!--esta es la llamada cdn de datatable-->
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
-
     <!-- scripts constume-->
-    <script src="../assets/js/direccion.js?v=fase07"></script>
+    <script src="../assets/js/direccion.js?v=fase07d"></script>
     <script src="../assets/js/layout_sidebar.js?v=fase07b"></script>
 </body>
 

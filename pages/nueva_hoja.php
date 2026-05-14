@@ -80,11 +80,7 @@ include_once '../validarSesion.php';
         </div>
         <div class="d-flex flex-column flex-shrink-0 h-100 position-fixed top-0 end-0 app-main">
             <!--Navbar-->
-            <nav class="navbar app-navbar">
-                <div class="container-fluid">
-                    <span class="navbar-brand text-light text-center w-100 fw-bolder">The Fuentes Corporation Workspace</span>
-                </div>
-            </nav>
+            <?php include __DIR__ . '/../includes/legacy_navbar.php'; ?>
             <nav class="nav shadow-sm d-flex align-items-center" id="navtab" aria-label="breadcrumb" aria-current="page">
                 <ol class="breadcrumb py-2 px-3 my-0">
                     <li class="breadcrumb-item">
