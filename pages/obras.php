@@ -6,16 +6,13 @@ require_once __DIR__ . '/../api/conexion.php';
 $__pdo  = (new Conexion())->Conectar();
 $__user = tf_current_user($__pdo);
 
-// RBAC: requiere permiso de ver obras
-if (!tf_has_permission('obras.view', $__user)) {
-    tf_abort(403, 'No tienes permiso para acceder a esta seccion');
-}
+tf_require_any_permission($__pdo, ['obras.view'], 'No tienes permiso para acceder a esta seccion');
 
 $usuario_nombre  = $__user['user_name']    ?? '';
 $usuario_rol     = $__user['role']['name'] ?? 'Residente';
 $usuario_rolCode = $__user['role']['code'] ?? 'residente';
 $usuario_perms   = $__user['permissions']  ?? [];
-$usuario_dirAcc  = (int)($__user['user_directionAcess'] ?? 0);
+$usuario_dirAcc  = tf_user_has_direction_access($__user) ? 1 : 0;
 
 // Obra activa: por GET, por sessionStorage (JS) o fallback al menu
 $obraIdParam = isset($_GET['obra']) ? (int)$_GET['obra'] : 0;
@@ -24,8 +21,7 @@ $tf_page_title     = 'Menu de obra';
 $tf_active_nav     = 'obras';
 $tf_breadcrumb     = [
     ['Inicio', './index.php'],
-    ['Obras',  './index.php'],
-    ['Menu',   '#'],
+    ['Obras',  '#'],
 ];
 $tf_user           = [
     'name'        => $usuario_nombre,
@@ -35,7 +31,7 @@ $tf_user           = [
     'permissions' => $usuario_perms,
 ];
 $tf_show_direccion = in_array($usuario_rolCode, ['admin','director'], true) || $usuario_dirAcc === 1;
-$tf_show_admin     = $usuario_rolCode === 'admin';
+$tf_show_admin     = in_array($usuario_rolCode, ['admin', 'desarrollador'], true) || tf_has_permission('admin.users.view', $__user);
 $tf_show_subbar    = true;
 $tf_user_id_js     = (string)($__user['user_id'] ?? '');
 
@@ -50,18 +46,16 @@ $tf_subbar_extra = '
 include __DIR__ . '/../includes/layout_top.php';
 ?>
 
-<div id="AppObras" class="tf-page-inner">
+<div id="AppObras" class="tf-page-inner" x-data="obrasApp()" x-init="init()" x-cloak>
 
     <header class="tf-page-header">
         <div>
             <span class="tf-eyebrow">Obra activa</span>
-            <h1 class="tf-page-title" v-cloak>
-                {{ obras.length ? obras[0].obras_nombre : 'Cargando obra...' }}
-            </h1>
+            <h1 class="tf-page-title" x-cloak x-text="obras.length ? obras[0].obras_nombre : 'Cargando obra...'"></h1>
             <p class="tf-page-lead">
                 Selecciona el modulo con el que deseas trabajar en esta obra.
             </p>
-            <div class="tf-chip tf-chip-success mt-2" v-cloak>
+            <div class="tf-chip tf-chip-success mt-2" x-cloak>
                 <span class="tf-chip-dot"></span> Obra activa
             </div>
         </div>
@@ -82,8 +76,8 @@ include __DIR__ . '/../includes/layout_top.php';
                 </span>
                 <span class="tf-kpi-label">Nombre de la obra</span>
             </div>
-            <div class="tf-kpi-value" style="font-size:1.25rem" v-cloak>
-                {{ obras.length ? obras[0].obras_nombre : '—' }}
+            <div class="tf-kpi-value" style="font-size:1.25rem" x-cloak>
+                <span x-text="obras.length ? obras[0].obras_nombre : '—'"></span>
             </div>
         </article>
 
@@ -107,7 +101,7 @@ include __DIR__ . '/../includes/layout_top.php';
                 </span>
                 <span class="tf-kpi-label">Obras recientes</span>
             </div>
-            <div class="tf-kpi-value" v-cloak>{{ obrasLista.length }}</div>
+            <div class="tf-kpi-value" x-cloak x-text="obrasLista.length"></div>
             <div class="tf-kpi-foot">
                 <span>en el panel principal</span>
             </div>
@@ -130,8 +124,8 @@ include __DIR__ . '/../includes/layout_top.php';
                 <!-- Requisiciones -->
                 <button type="button"
                         class="tf-module-card"
-                        @click="enterRequisiciones"
-                        :disabled="!can('requisiciones.view')">
+                    x-on:click="enterRequisiciones"
+                    x-bind:disabled="!can('requisiciones.view')">
                     <span class="tf-module-icon tf-module-icon-primary">
                         <i class="bi bi-receipt"></i>
                     </span>
@@ -145,8 +139,8 @@ include __DIR__ . '/../includes/layout_top.php';
                 <!-- Presiones -->
                 <button type="button"
                         class="tf-module-card"
-                        @click="enterPresiones"
-                        :disabled="!can('presiones.view')">
+                    x-on:click="enterPresiones"
+                    x-bind:disabled="!can('presiones.view')">
                     <span class="tf-module-icon tf-module-icon-success">
                         <i class="bi bi-cash-coin"></i>
                     </span>
@@ -168,7 +162,7 @@ $tf_inline_script = <<<JS
     var url  = "../api/crud_obras.php";
     var url2 = ".";
 
-    // Recuperar obra activa: prioridad ?obra= -> sessionStorage -> 0
+    // Recuperar obra activa: prioridad ?obra= -> sessionStorage -> localStorage -> 0
     var __obraActiva = 0;
     try {
         var fromUrl = new URLSearchParams(window.location.search).get('obra');
@@ -177,53 +171,64 @@ $tf_inline_script = <<<JS
             var fromSS = sessionStorage.getItem("obraActiva");
             if (fromSS) __obraActiva = parseInt(fromSS, 10) || 0;
         }
+        if (!__obraActiva) {
+            var fromLS = localStorage.getItem("obraActiva");
+            if (fromLS) __obraActiva = parseInt(fromLS, 10) || 0;
+        }
     } catch (e) {}
 
     if (__obraActiva) {
         try { sessionStorage.setItem("obraActiva", String(__obraActiva)); } catch(e){}
+        try { localStorage.setItem("obraActiva", String(__obraActiva)); } catch(e){}
     } else {
         // Sin obra activa -> volver al menu de obras
         window.location.replace(url2 + "/index.php");
     }
 
-    new Vue({
-        el: "#AppObras",
-        data: {
+    function obrasApp() {
+        return {
             users: [],
             obras: [],
             obrasLista: [],
-            NameUser: (window.TF_CONTEXT && window.TF_CONTEXT.user && window.TF_CONTEXT.user.name) || ""
-        },
-        methods: {
+            NameUser: (window.TF_CONTEXT && window.TF_CONTEXT.user && window.TF_CONTEXT.user.name) || "",
             can: function(code) { return window.TF && window.TF.can ? window.TF.can(code) : true; },
-            consultarUsuario: function () {
-                axios.post(url, { accion: 1 }).then(function(r){
+            consultarUsuario: async function () {
+                try {
+                    var r = await axios.post(url, { accion: 1 });
                     this.users = r.data || [];
                     if (this.users[0] && this.users[0].user_name) this.NameUser = this.users[0].user_name;
-                }.bind(this)).catch(function(){ console.warn("No se pudo cargar usuario"); });
+                } catch (e) {
+                    console.warn("No se pudo cargar usuario");
+                }
             },
-            infoObraActiva: function (id) {
-                axios.post(url, { accion: 3, obra: id }).then(function(r){
+            infoObraActiva: async function (id) {
+                try {
+                    var r = await axios.post(url, { accion: 3, obra: id });
                     this.obras = r.data || [];
-                }.bind(this)).catch(function(){ console.warn("No se pudo cargar la obra"); });
+                } catch (e) {
+                    console.warn("No se pudo cargar la obra");
+                }
             },
-            listarObras: function () {
-                axios.post(url, { accion: 2, modo: "recientes", limite: 12 }).then(function(r){
-                    this.obrasLista = r.data || [];
-                }.bind(this));
+            listarObras: async function () {
+                var r = await axios.post(url, { accion: 2, modo: "recientes", limite: 12 });
+                this.obrasLista = r.data || [];
             },
             enterRequisiciones: function () { window.location.href = url2 + "/requisiciones.php"; },
             enterPresiones:     function () { window.location.href = url2 + "/presiones.php"; },
             irDireecion:        function () { window.location.href = url2 + "/direccion.php"; },
-            irMenuCatalago:     function () { window.location.href = url2 + "/menu_catalago.php"; }
-        },
-        created: function () {
-            this.listarObras();
-            this.infoObraActiva(__obraActiva);
-            this.consultarUsuario();
-        }
-    });
+            irMenuCatalago:     function () { window.location.href = url2 + "/menu_catalago.php"; },
+            init: function () {
+                this.listarObras();
+                this.infoObraActiva(__obraActiva);
+                this.consultarUsuario();
+            }
+        };
+    }
 JS;
+
+$tf_use_vue = false;
+$tf_extra_head = '<style>[x-cloak]{display:none !important;}</style>';
+$tf_extra_scripts = '<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>';
 
 include __DIR__ . '/../includes/layout_bottom.php';
 ?>

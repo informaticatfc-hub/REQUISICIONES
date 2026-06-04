@@ -1,9 +1,40 @@
 <?php
 include_once '../validarSesion.php';
-?>
-<!DOCTYPE html>
-<html>
+require_once __DIR__ . '/../api/rbac.php';
+require_once __DIR__ . '/../api/conexion.php';
 
+$__pdo  = (new Conexion())->Conectar();
+$__user = tf_current_user($__pdo);
+
+tf_require_any_permission($__pdo, ['presiones.view'], 'No tienes permiso para ver presiones');
+
+$usuario_nombre  = $__user['user_name']    ?? '';
+$usuario_rol     = $__user['role']['name'] ?? 'Usuario';
+$usuario_rolCode = $__user['role']['code'] ?? 'usuario';
+$usuario_perms   = $__user['permissions']  ?? [];
+
+$canCreatePresion = tf_has_permission('presiones.create', $__user);
+
+$tf_extra_head = '<style>[x-cloak]{display:none!important;}</style>';
+$tf_page_title     = 'Presiones';
+$tf_active_nav     = 'presiones';
+$tf_breadcrumb     = [['Inicio', './index.php'], ['Presiones', '#']];
+$tf_user           = [
+    'name'        => $usuario_nombre,
+    'role'        => $usuario_rol,
+    'roleCode'    => $usuario_rolCode,
+    'initials'    => '',
+    'permissions' => $usuario_perms,
+];
+$tf_show_direccion = in_array($usuario_rolCode, ['admin','director'], true);
+$tf_show_admin     = in_array($usuario_rolCode, ['admin', 'desarrollador'], true) || tf_has_permission('admin.users.view', $__user);
+$tf_show_subbar    = true;
+$tf_user_id_js     = (string)($__user['user_id'] ?? '');
+
+include __DIR__ . '/../includes/layout_top.php';
+?>
+
+<<<<<<< Updated upstream
 <head>
     <meta charset="utf8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
@@ -79,144 +110,178 @@ include_once '../validarSesion.php';
                     <span>CERRAR SESION</span>
                 </a>
             </div>
+=======
+<div id="AppPresion" class="tf-page-inner" x-data="presionesApp()" x-init="init()" x-cloak>
+    <header class="tf-page-header">
+        <div>
+            <span class="tf-eyebrow">Seguimiento semanal</span>
+            <h1 class="tf-page-title">Presiones <span x-show="obras.length">- <span x-text="obras.length ? obras[0].obras_nombre : ''"></span></span></h1>
+            <p class="tf-page-lead">Gestiona las presiones de pago de la obra activa.</p>
+>>>>>>> Stashed changes
         </div>
-        <div class="d-flex flex-column flex-shrink-0 h-100 position-fixed top-0 end-0 app-main">
-            <!--Navbar-->
-            <?php include __DIR__ . '/../includes/legacy_navbar.php'; ?>
-            <nav class="nav shadow-sm d-flex align-items-center" id="navtab" aria-label="breadcrumb" aria-current="page">
-                <ol class="breadcrumb py-2 px-3 my-0">
-                    <li class="breadcrumb-item">
-                        <a href="./index.php">
-                            <img class="" src="../images/icons/home.svg" alt="user-icon" height="24" width="24">
-                            <span>Inicio</span>
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item"><a href="./obras.php"><span>Menu de Obra: {{obras.length ? obras[0].obras_nombre : ''}}</span></a></li>
-                    <li class="breadcrumb-item"><span>Presiones de {{obras.length ? obras[0].obras_nombre : ''}}</span></li>
-                </ol>
-            </nav>
-            <div class="container page-shell overflow-auto page-content">
-                <div class="page-hdr">
-                    <div class="page-hdr-left">
-                        <h2 class="page-title">Presiones &mdash; {{obras.length ? obras[0].obras_nombre : ''}}</h2>
-                        <p class="page-lead">Gestiona las presiones de pago de la obra. Enlaza requisiciones y consulta los detalles.</p>
-                        <div class="obras-chip mt-2">
-                            <span class="obras-chip-dot"></span>
-                            Seguimiento semanal
-                        </div>
-                    </div>
-                    <div class="page-hdr-right" v-if="this.users.length && this.users[0].user_createPresion == 1">
-                        <button type="button" class="btn btn-success" @click="NewPression">Agregar Presion</button>
-                    </div>
-                </div>
-                <div class="ops-hero-grid">
-                    <div class="quick-tile">
-                        <span class="quick-tile-label">Total Presiones</span>
-                        <span class="quick-tile-value">{{presiones.length}}</span>
-                    </div>
-                    <div class="quick-tile">
-                        <span class="quick-tile-label">Pendientes</span>
-                        <span class="quick-tile-value">{{presiones.filter(p => p.presiones_estatus === 'PENDIENTE').length}}</span>
-                    </div>
-                    <div class="quick-tile">
-                        <span class="quick-tile-label">Autorizadas</span>
-                        <span class="quick-tile-value">{{presiones.filter(p => p.presiones_estatus === 'AUTORIZADO').length}}</span>
-                    </div>
-                </div>
-                <div class="table-wrapper">
-                <div class="overflow-auto">
-                        <table id="example" class="table table-prof table-hover w-100">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th scope="col">Nombre</th>
-                                    <th scope="col">Alias</th>
-                                    <th scope="col">Semana</th>
-                                    <th scope="col">Dia</th>
-                                    <th scope="col">Estatus</th>
-                                    <th scope="col"></th>
-                                </tr>
-                            </thead>
-                            <tbody class="table-light" id="Tabla_Items">
-                                <tr class="my-3" v-for="(presion,indice) of presiones">
-                                    <td scope="row">{{presion.presiones_nombre}}</td>
-                                    <td scope="row">{{presion.presiones_alias}}</td>
-                                    <td>{{presion.presiones_semana}}</td>
-                                    <td>{{presion.presiones_dia}}</td>
-                                    <td>
-                                        <span class="badge bg-danger" v-if="presion.presiones_estatus == 'PENDIENTE'">PENDIENTE DE PAGO</span>
-                                        <span class="badge bg-success" v-if="presion.presiones_estatus == 'AUTORIZADO'">CERRADA</span>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group" role="group" aria-label="Basic mixed styles example" v-if="presion.presiones_estatus == 'PENDIENTE'">
-                                            <div class="btn-group dropdown" role="group">
-                                                <button id="btnGroupDrop1" type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-fill text-white" viewBox="0 0 16 16">
-                                                        <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0" />
-                                                        <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7" />
-                                                    </svg>
-                                                </button>
-                                                <ul class="dropdown-menu" aria-labelledby="btnGroupDrop1">
-                                                    <li><a class="dropdown-item" href="#" @click="ConsultarPresion(presion.presiones_id,1,0,0)">Enlazar Requisiciones</a></li>
-                                                    <li><a class="dropdown-item" href="#" @click="ConsultarPresion(presion.presiones_id,2,presion.presiones_semana,presion.presiones_dia)">Detalles de la Presion</a></li>
-                                                </ul>
-                                            </div>
-                                            <!-- <button type="button" class="btn btn-danger">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16">
-                                                    <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0" />
-                                                </svg>
-                                            </button> -->
-                                        </div>
-                                        <div class="btn-group" role="group" aria-label="Basic mixed styles example" v-if="presion.presiones_estatus == 'AUTORIZADO'">
-                                            <div class="btn-group dropdown" role="group">
-                                                <button id="btnGroupDrop1" type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-fill text-white" viewBox="0 0 16 16">
-                                                        <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0" />
-                                                        <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7" />
-                                                    </svg>
-                                                </button>
-                                                <ul class="dropdown-menu" aria-labelledby="btnGroupDrop1">
-                                                    <li><a class="dropdown-item disabled" href="#" @click="ConsultarPresion(presion.presiones_id,1,0,0)">Enlazar Requisiciones</a></li>
-                                                    <li><a class="dropdown-item" href="#" @click="ConsultarPresion(presion.presiones_id,2,presion.presiones_semana,presion.presiones_dia)">Detalles de la Presion</a></li>
-                                                </ul>
-                                            </div>
-                                            <!-- <button type="button" class="btn btn-danger">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash-fill" viewBox="0 0 16 16">
-                                                    <path d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0" />
-                                                </svg>
-                                            </button> -->
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                            <tfoot class="table-dark">
-                            </tfoot>
-                        </table>
-                </div><!-- /overflow-auto -->
-                </div><!-- /table-wrapper -->
+        <?php if ($canCreatePresion): ?>
+        <div class="tf-page-header-actions">
+            <button type="button" class="tf-btn tf-btn-primary" x-on:click="NewPression">
+                <i class="bi bi-plus-lg"></i> Agregar Presion
+            </button>
+        </div>
+        <?php endif; ?>
+    </header>
+
+    <section class="tf-kpi-grid">
+        <article class="tf-kpi">
+            <div class="tf-kpi-head"><span class="tf-kpi-label">Total presiones</span></div>
+            <div class="tf-kpi-value" x-text="totalPresiones"></div>
+        </article>
+        <article class="tf-kpi">
+            <div class="tf-kpi-head"><span class="tf-kpi-label">Pendientes</span></div>
+            <div class="tf-kpi-value" x-text="pendientesCount"></div>
+        </article>
+        <article class="tf-kpi">
+            <div class="tf-kpi-head"><span class="tf-kpi-label">Autorizadas</span></div>
+            <div class="tf-kpi-value" x-text="autorizadasCount"></div>
+        </article>
+    </section>
+
+    <!-- Tabs: Todas / Pendientes de pago -->
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link" x-bind:class="{active: activeTab==='todas'}" x-on:click="setActiveTab('todas')">
+                <i class="bi bi-list-ul"></i> Todas
+                <span class="badge bg-secondary ms-1" x-text="totalPresiones"></span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" x-bind:class="{active: activeTab==='pendientes'}" x-on:click="setActiveTab('pendientes')">
+                <i class="bi bi-hourglass-split"></i> Pendientes de pago
+                <span class="badge bg-warning text-dark ms-1" x-show="autorizadasCount" x-text="autorizadasCount"></span>
+            </button>
+        </li>
+    </ul>
+
+    <section class="tf-card" x-show="activeTab==='todas'">
+        <div class="p-3 border-bottom">
+            <input x-model="searchText" x-on:input="onSearchInput"
+                   type="search"
+                   class="form-control form-control-sm"
+                   placeholder="Buscar por nombre, alias, semana o día..."
+                   style="max-width:320px">
+        </div>
+        <div class="tf-card-body p-0" style="overflow-x:auto;">
+            <table id="example" class="tf-admin-table w-100">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Alias</th>
+                        <th>Semana</th>
+                        <th>Dia</th>
+                        <th>Estatus</th>
+                        <th style="text-align:right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="(presion,indice) in presiones" :key="presion.presiones_id + '-' + indice">
+                    <tr>
+                        <td x-text="presion.presiones_nombre"></td>
+                        <td x-text="presion.presiones_alias"></td>
+                        <td x-text="presion.presiones_semana"></td>
+                        <td x-text="presion.presiones_dia"></td>
+                        <td>
+                            <span class="tf-status tf-status-inactive" x-show="presion.presiones_estatus == 'PENDIENTE'">PENDIENTE DE PAGO</span>
+                            <span class="tf-status tf-status-active" x-show="presion.presiones_estatus != 'PENDIENTE'">CERRADA</span>
+                        </td>
+                        <td style="text-align:right">
+                            <div class="btn-group dropdown" role="group">
+                                <button type="button" class="tf-btn tf-btn-sm tf-btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <?php if ($canCreatePresion): ?>
+                                        <a class="dropdown-item" href="#" x-show="presion.presiones_estatus == 'PENDIENTE'" x-on:click.prevent="ConsultarPresion(presion.presiones_id,1,0,0)">
+                                            Enlazar Requisiciones
+                                        </a>
+                                        <a class="dropdown-item disabled" href="#" x-show="presion.presiones_estatus != 'PENDIENTE'">
+                                            Enlazar Requisiciones
+                                        </a>
+                                        <?php endif; ?>
+                                    </li>
+                                    <li><a class="dropdown-item" href="#" x-on:click.prevent="ConsultarPresion(presion.presiones_id,2,presion.presiones_semana,presion.presiones_dia)">Detalles de la Presion</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Tab: Pendientes de pago (AUTORIZADO) -->
+    <section class="tf-card" x-show="activeTab==='pendientes'">
+        <div class="p-3 border-bottom">
+            <input x-model="searchText" x-on:input="onSearchInput"
+                   type="search"
+                   class="form-control form-control-sm"
+                   placeholder="Buscar pendientes por nombre, alias, semana o día..."
+                   style="max-width:320px">
+        </div>
+        <div class="tf-card-body p-0" style="overflow-x:auto;">
+            <div x-show="!pendientesDePago.length" class="p-4 text-center text-muted">
+                <i class="bi bi-check-circle" style="font-size:2rem"></i>
+                <p class="mt-2 mb-0">Sin presiones pendientes de pago</p>
             </div>
+            <table class="tf-admin-table w-100" x-show="pendientesDePago.length">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Alias</th>
+                        <th>Semana</th>
+                        <th>Dia</th>
+                        <th style="text-align:right">Ir a detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="(p, index) in pendientesDePago" :key="p.presiones_id + '-pend-' + index">
+                    <tr>
+                        <td x-text="p.presiones_nombre"></td>
+                        <td x-text="p.presiones_alias"></td>
+                        <td x-text="p.presiones_semana"></td>
+                        <td x-text="p.presiones_dia"></td>
+                        <td style="text-align:right">
+                            <button class="tf-btn tf-btn-sm tf-btn-primary"
+                                    x-on:click.prevent="ConsultarPresion(p.presiones_id,2,p.presiones_semana,p.presiones_dia)">
+                                <i class="bi bi-eye"></i> Ver
+                            </button>
+                        </td>
+                    </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-top">
+        <small class="text-muted" x-text="'Página ' + currentPage + ' de ' + totalPages + ' · ' + totalRows + ' registros'"></small>
+        <div class="btn-group">
+            <button class="tf-btn tf-btn-ghost tf-btn-sm" x-on:click="goToPage(1)" x-bind:disabled="currentPage <= 1">Primera</button>
+            <button class="tf-btn tf-btn-ghost tf-btn-sm" x-on:click="goToPage(currentPage - 1)" x-bind:disabled="currentPage <= 1">Anterior</button>
+            <template x-for="p in pageRange" :key="'pr-page-'+p">
+            <button
+                    class="tf-btn tf-btn-sm"
+                    x-bind:class="p === currentPage ? 'tf-btn-primary' : 'tf-btn-ghost'"
+                    x-on:click="goToPage(p)" x-text="p"></button>
+            </template>
+            <button class="tf-btn tf-btn-ghost tf-btn-sm" x-on:click="goToPage(currentPage + 1)" x-bind:disabled="currentPage >= totalPages">Siguiente</button>
+            <button class="tf-btn tf-btn-ghost tf-btn-sm" x-on:click="goToPage(totalPages)" x-bind:disabled="currentPage >= totalPages">Última</button>
         </div>
     </div>
-    <!--scripts de bootstrap, poppers y jquery-->
-    <script src="../assets/lib/jquery/jquery-3.7.1.slim.min.js"></script>
-    <script src="../assets/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+</div>
 
-    <!-- scripts de vue.js-->
-    <script src="../assets/lib/vue/vue.min.js"></script>
-
-    <!--Script de axios-->
-    <script src="../assets/lib/axios/axios.min.js"></script>
-
-    <!--scripts de sweetalert-->
-    <script src="../assets/lib/sweetalert/sweetalert2.min.js"></script>
-
-    <!--esta es la llamada cdn de datatable-->
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
-
-    <!-- scripts constume-->
-    <script src="../assets/js/presiones.js"> </script>
-</body>
-
-</html>
-
-
+<?php
+$tf_use_vue = false;
+$tf_use_axios = true;
+$tf_extra_scripts = '<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>'
+    . '<script src="../assets/js/presiones.js"></script>';
+include __DIR__ . '/../includes/layout_bottom.php';
+?>

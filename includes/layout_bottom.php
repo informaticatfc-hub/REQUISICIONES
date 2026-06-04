@@ -94,6 +94,8 @@ $tf_user_id_js     = $tf_user_id_js     ?? '';
     <!-- DataTables 2.0.8 -->
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
     <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
+    <script src="https://cdn.datatables.net/responsive/3.0.2/js/dataTables.responsive.js"></script>
+    <script src="https://cdn.datatables.net/responsive/3.0.2/js/responsive.bootstrap5.js"></script>
     <?php endif; ?>
 
     <!-- Configurar axios para enviar CSRF en cada peticion (Fase 2) -->
@@ -109,7 +111,7 @@ $tf_user_id_js     = $tf_user_id_js     ?? '';
     <?php endif; ?>
 
     <!-- Controlador de layout v4 (theme, mobile nav, command palette) -->
-    <script src="../assets/js/v4-layout.js"></script>
+    <script src="../assets/js/v4-layout.js?v=fase08q"></script>
 
     <?php if (!empty($tf_extra_scripts)) echo $tf_extra_scripts; ?>
 

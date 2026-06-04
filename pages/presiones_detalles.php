@@ -1,9 +1,58 @@
 <?php
 include_once '../validarSesion.php';
-?>
-<!DOCTYPE html>
-<html>
+require_once __DIR__ . '/../api/rbac.php';
+require_once __DIR__ . '/../api/conexion.php';
 
+$__pdo  = (new Conexion())->Conectar();
+$__user = tf_current_user($__pdo);
+
+tf_require_any_permission($__pdo, ['presiones.view', 'direccion.view', 'presiones.authorize'], 'No tienes permiso para ver el detalle de presiones');
+
+$tf_page_title     = 'Detalle de Presion';
+$tf_active_nav     = 'obras';
+$tf_breadcrumb     = [['Inicio', './index.php'], ['Obras', './obras.php'], ['Detalle de Presion', '#']];
+$tf_user = [
+    'name'        => $__user['user_name'] ?? '',
+    'role'        => $__user['role']['name'] ?? '',
+    'roleCode'    => $__user['role']['code'] ?? '',
+    'initials'    => '',
+    'permissions' => $__user['permissions'] ?? [],
+];
+$tf_show_direccion = in_array(($__user['role']['code'] ?? ''), ['director', 'admin', 'desarrollador'], true)
+    || tf_user_has_direction_access($__user);
+$tf_show_admin = in_array(($__user['role']['code'] ?? ''), ['admin', 'desarrollador'], true);
+$tf_user_id_js = (string)($__user['user_id'] ?? '');
+
+$tf_extra_head = <<<'CSS'
+<link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/3.0.2/css/responsive.bootstrap5.css">
+<style>
+[x-cloak]{display:none!important;}
+#AppPresionDetail .table-prof thead th { white-space: nowrap; }
+#AppPresionDetail .table-prof td { vertical-align: middle; }
+#AppPresionDetail .table-prof thead th,
+#AppPresionDetail .table-prof tbody td { padding: .62rem .68rem; }
+#AppPresionDetail .tf-kpi-value { line-height: 1.15; }
+@media (max-width: 991.98px) {
+    #AppPresionDetail .tf-kpi-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+}
+@media (max-width: 767.98px) {
+    #AppPresionDetail .tf-page-header { margin-bottom: 14px; padding-bottom: 12px; }
+    #AppPresionDetail .tf-page-actions { width: 100%; }
+    #AppPresionDetail .tf-page-actions .tf-btn { width: 100%; }
+    #AppPresionDetail .tf-kpi-grid { grid-template-columns: 1fr; }
+    #AppPresionDetail .table-prof { font-size: .82rem; }
+    #AppPresionDetail .table-prof thead th,
+    #AppPresionDetail .table-prof tbody td { padding: .48rem .52rem; }
+    #AppPresionDetail .table-prof .form-control { min-height: 34px; padding: .32rem .5rem; font-size: .8rem; }
+}
+</style>
+CSS;
+
+include __DIR__ . '/../includes/layout_top.php';
+?>
+
+<<<<<<< Updated upstream
 <head>
     <meta charset="utf8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
@@ -27,166 +76,133 @@ include_once '../validarSesion.php';
     <link rel="stylesheet" href="../assets/css/main.css">
     <title>PRESION DE LA SEMANA</title>
 </head>
+=======
+<div id="AppPresionDetail" class="tf-page-inner" x-data="presionDetailApp()" x-init="init()" x-cloak>
+    <div class="tf-page-content">
+        <header class="tf-page-header">
+            <div>
+                <span class="tf-eyebrow">Presion de Pago</span>
+                <h1 class="tf-page-title">Presion — Semana <span x-text="semana"></span> / Dia <span x-text="dia"></span></h1>
+                <p class="tf-page-lead">Detalle de la presion de pago de la obra <span x-text="(obraActiva[0] && obraActiva[0].obras_nombre) || ''"></span>.</p>
+            </div>
+            <div class="tf-page-actions">
+                <button type="button" class="tf-btn tf-btn-secondary" x-on:click="exportarExcel">Exportar Excel</button>
+            </div>
+        </header>
+>>>>>>> Stashed changes
 
-<body class="app-layout">
-    <div id="AppPresionDetail">
-        <!--sidebar-->
-        <div class="d-flex flex-column flex-shrink-0 p-3 text-white position-fixed top-0 start-0 h-100 app-sidebar" id="sidebar">
-            <div class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
-                <div class="d-flex flex-row">
-                    <div class="d-flex align-items-center me-3">
-                        <img src="../images/icons/user.svg" alt="user-icon" height="60" width="60">
-                    </div>
-                    <div class="d-flex flex-column my-3">
-                        <span class="fs-5"> {{NameUser}}</span>
-                    </div>
-                </div>
-            </div>
-            <hr>
-            <div id="sideBarItem" class="mb-auto overflow-auto page-content">
-                <ul class="nav nav-pills flex-column f-5" id="v-pills-tab" role="tablist" aria-orientation="vertical">
-                    <li v-if="users.length && users[0].user_directionAcess == 1">
-                        <a href="#" class="nav-link text-white" id="v-pills-reports-tab" data-bs-toggle="pill" data-bs-target="#v-pills-reports" type="button" role="tab" aria-controls="v-pills-reports" aria-selected="false" @click="irDireecion">
-                            <img class="me-2" src="../images/icons/ceo.svg" alt="user-icon" height="24" width="24">
-                            DIRECCION
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="nav-link text-white" aria-current="page" id="v-pills-obras-tab" data-bs-toggle="pill" data-bs-target="#v-pills-obras" type="button" role="tab" aria-controls="v-pills-obras" aria-selected="true">
-                            <img class="me-2" src="../images/icons/obras.svg" alt="user-icon" height="24" width="24">
-                            OBRAS
-                        </a>
-                        <div class="tab-content" id="v-pills-tabContent">
-                            <ul class="tab-pane fade nav nav-pills flex-column mb-auto" id="v-pills-obras" role="tabpanel" aria-labelledby="v-pills-obras-tab">
-                                <li v-for="obra in this.obras">
-                                    <a style="cursor: pointer" class="nav-link text-white ms-4" aria-current="page" @click="irObra(obra.obras_id)">{{obra.obras_nombre}}</a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
-                    <li>
-                        <a href="#" class="nav-link text-white" aria-current="page" id="v-pills-catalago-tab" data-bs-toggle="pill" data-bs-target="#v-pills-catalago" type="button" role="tab" aria-controls="v-pills-catalago" aria-selected="false" @click="irMenuCatalago">
-                            <img class="me-2" src="../images/icons/catalagos.svg" alt="user-icon" height="24" width="24">
-                            CATALAGOS
-                        </a>
-                    </li>
-                </ul>
-            </div>
-            <hr>
-            <div class="dropdown">
-                <a href="./closeSesion.php" class="d-flex align-items-center text-white text-decoration-none f-5" aria-expanded="false">
-                    <img class="me-2" src="../images/icons/logout.svg" alt="user-icon" height="24" width="24">
-                    <span>CERRAR SESION</span>
-                </a>
-            </div>
+        <div class="tf-kpi-grid mb-4">
+            <article class="tf-kpi">
+                <div class="tf-kpi-head"><span class="tf-kpi-label">Semana / Dia</span></div>
+                <div class="tf-kpi-value" style="font-size:1.25rem;">Sem <span x-text="semana"></span> — Dia <span x-text="dia"></span></div>
+            </article>
+            <article class="tf-kpi">
+                <div class="tf-kpi-head"><span class="tf-kpi-label">Items en Presion</span></div>
+                <div class="tf-kpi-value" x-text="presiones.filter(function(p){return p.HojaEstatus == 'LIGADA' || p.HojaEstatus == 'AUTORIZADA' || p.HojaEstatus == 'PAGADA'}).length"></div>
+            </article>
+            <article class="tf-kpi">
+                <div class="tf-kpi-head"><span class="tf-kpi-label">Obra</span></div>
+                <div class="tf-kpi-value" style="font-size:1.25rem;" x-text="(obraActiva[0] && obraActiva[0].obras_nombre) || '-'"></div>
+            </article>
         </div>
-        <div class="d-flex flex-column flex-shrink-0 h-100 position-fixed top-0 end-0 app-main">
-            <!--Navbar-->
-            <?php include __DIR__ . '/../includes/legacy_navbar.php'; ?>
-            <nav class="nav shadow-sm d-flex align-items-center" id="navtab" aria-label="breadcrumb" aria-current="page">
-                <ol class="breadcrumb py-2 px-3 my-0">
-                    <li class="breadcrumb-item">
-                        <a href="./index.php">
-                            <img class="" src="../images/icons/home.svg" alt="user-icon" height="24" width="24">
-                            <span>Inicio</span>
-                        </a>
-                    </li>
-                    <li class="breadcrumb-item"><a href="./obras.php"><span>Menu de Obra</span></a></li>
-                    <li class="breadcrumb-item"><a href="./presiones.php"><span>Presiones de Obra</span></a></li>
-                    <li class="breadcrumb-item active" aria-current="page"><span>Presion de la Semana {{semana}} y del dia {{dia}} de la obra {{obraActiva.length ? obraActiva[0].obras_nombre : ''}}</span></li>
-                </ol>
-            </nav>
-            <div class="container page-shell overflow-auto page-content">
-                <div class="page-hdr">
-                    <div class="page-hdr-left">
-                        <h2 class="page-title">Presion &mdash; Semana {{this.semana}} / Dia {{this.dia}}</h2>
-                        <p class="page-lead">Detalle de la presion de pago de la obra {{obraActiva.length ? obraActiva[0].obras_nombre : ''}}.</p>
-                        <div class="obras-chip mt-2">
-                            <span class="obras-chip-dot"></span>
-                            Detalle de presion
-                        </div>
-                    </div>
-                    <div class="page-hdr-right">
-                        <button type="button" class="btn btn-success" @click="exportarExcel">Exportar Excel</button>
-                    </div>
-                </div>
-                <div class="ops-hero-grid">
-                    <div class="quick-tile">
-                        <span class="quick-tile-label">Semana / Dia</span>
-                        <span class="quick-tile-value small">Sem {{this.semana}} &mdash; Dia {{this.dia}}</span>
-                    </div>
-                    <div class="quick-tile">
-                        <span class="quick-tile-label">Items en Presion</span>
-                        <span class="quick-tile-value">{{presiones.filter(function(p){return p.HojaEstatus == 'LIGADA' || p.HojaEstatus == 'AUTORIZADA' || p.HojaEstatus == 'PAGADA'}).length}}</span>
-                    </div>
-                    <div class="quick-tile">
-                        <span class="quick-tile-label">Obra</span>
-                        <span class="quick-tile-value small">{{obraActiva.length ? obraActiva[0].obras_nombre : ''}}</span>
-                    </div>
-                </div>
-                <div class="table-wrapper">
-                <div class="overflow-auto">
-                        <table id="example" class="table table-prof align-middle table-hover w-100">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th scope="col" class="text-center align-middle">CLAVE</th>
-                                    <th scope="col" class="text-center align-middle">N° DE REQUISICION</th>
-                                    <th scope="col" class="text-center align-middle">PROVEEDOR</th>
-                                    <th scope="col" class="text-center align-middle">CONCEPTO</th>
-                                    <th scope="col" class="text-center align-middle">ADEUDO</th>
-                                    <th scope="col" class="text-center align-middle">NETO A PAGAR</th>
-                                    <th scope="col" class="text-center align-middle">FORMA DE PAGO</th>
-                                    <th scope="col" class="text-center align-middle">FECHA DE PAGO</th>
-                                    <th scope="col" class="text-center align-middle">BANCO DE PAGO</th>
-                                    <th scope="col" class="text-center align-middle">APLICAR ACCIONES</th>
-                                    <th class="text-center align-middle"></th>
-                                </tr>
-                            </thead>
-                            <tbody class="table-light" id="Tabla_Items">
-                                <tr class="my-3" v-for="(presion,indice) of presiones" v-if="presion.HojaEstatus == 'LIGADA' || presion.HojaEstatus == 'AUTORIZADA' || presion.HojaEstatus == 'PAGADA'">
-                                    <td scope="row" class="text-center align-middle inline-block fs-6">{{presion.clave}}</td>
-                                    <td :class="presion.atrClass" :style="presion.strStyle">{{presion.NumReq}}</td>
-                                    <td :class="presion.atrClass" :style="presion.strStyle">{{presion.proveedor}}</td>
-                                    <td :class="presion.atrClass" :style="presion.strStyle">{{presion.concepto}}</td>
-                                    <td class="text-center align-middle fs-6">{{formatearMoneda(presion.total, true)}}</td>
-                                    <td class="text-center align-middle fs-6">{{formatearMoneda(presion.adeudo, true)}}</td>
-                                    <td class="text-center align-middle fs-6">{{presion.formaPago}}</td>
-                                    <td class="text-center align-middle fs-6">
-                                        <input type="date" class="form-control" id="FechaPago" v-model="presion.Fecha">
-                                    </td>
-                                    <td class="text-center align-middle fs-6">
-                                        <input type="text" class="form-control" id="BancoPago" v-model="presion.Banco" placeholder="Ingresa Banco">
-                                    </td>
-                                    <td class="text-center align-middle inline-block fs-6">
-                                        <div class="btn-group btn-group-sm" role="group" aria-label="Basic mixed styles example">
-                                            <button type="button" class="btn btn-danger" data-bs-toggle="tooltip" data-bs-placement="bottom" data-toggle="tooltip" :title="'Descargar ' + presion.NumReq" @click="imprimirReq(presion.NumRequi,presion.clave,presion.id_hoja)">
-                                                <img class="" src="../images/icons/download.svg" alt="user-icon" height="24" width="24">
-                                            </button>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <img class="me-2" v-if="presion.showDetail == false" src="../images/icons/arrow_down.svg" alt="user-icon" height="24" width="24" style="cursor: pointer;" @click="cambiarBooleano(presion.showDetail,indice)">
-                                        <img class="me-2" v-if="presion.showDetail == true" src="../images/icons/arrow_up.svg" alt="user-icon" height="24" width="24" style="cursor: pointer;" @click="cambiarBooleano(presion.showDetail,indice)">
-                                    </td>
-                                </tr>
-                            </tbody>
-                            <tfoot class="table-dark">
-                                <tr class="my-3">
-                                    <td colspan="4" class="text-end">Total: </td>
-                                    <td class="text-center align-middle fs-6">{{formatearMoneda(sumatoria(presiones,"total"),true)}}</td>
-                                    <td class="text-center align-middle fs-6">{{formatearMoneda(sumatoria(presiones,"adeudo"),true)}}</td>
-                                    <td colspan="7"></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                </div><!-- /overflow-auto -->
-                </div><!-- /table-wrapper -->
-                <div class="d-flex justify-content-center mt-4 mb-3" v-if="this.estatus == 'PENDIENTE'">
-                    <button class="btn btn-primary px-4" @click="cerrarPresion" title="Cerrar Presion">CERRAR Y GUARDAR PRESION</button>
+
+        <section class="tf-card">
+            <div class="tf-card-body p-0">
+                <div class="table-responsive">
+                    <table id="example" class="table table-prof align-middle table-hover w-100 mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="text-center align-middle">CLAVE</th>
+                                <th class="text-center align-middle">N° DE REQUISICION</th>
+                                <th class="text-center align-middle">PROVEEDOR</th>
+                                <th class="text-center align-middle">CONCEPTO</th>
+                                <th class="text-center align-middle">ADEUDO</th>
+                                <th class="text-center align-middle">NETO A PAGAR</th>
+                                <th class="text-center align-middle">FORMA DE PAGO</th>
+                                <th class="text-center align-middle">FECHA DE PAGO</th>
+                                <th class="text-center align-middle">BANCO DE PAGO</th>
+                                <th class="text-center align-middle">APLICAR ACCIONES</th>
+                                <th class="text-center align-middle"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="table-light" id="Tabla_Items">
+                            <template x-for="(presion, indice) in presiones" :key="presion.id_hoja + '-' + indice">
+                            <tr x-show="presion.HojaEstatus == 'LIGADA' || presion.HojaEstatus == 'AUTORIZADA' || presion.HojaEstatus == 'PAGADA'">
+                                <td class="text-center align-middle" x-text="presion.clave"></td>
+                                <td x-bind:class="presion.atrClass" x-bind:style="presion.strStyle" x-text="presion.NumReq"></td>
+                                <td x-bind:class="presion.atrClass" x-bind:style="presion.strStyle" x-text="presion.proveedor"></td>
+                                <td x-bind:class="presion.atrClass" x-bind:style="presion.strStyle" x-text="presion.concepto"></td>
+                                <td class="text-center align-middle" x-text="formatearMoneda(presion.total, true)"></td>
+                                <td class="text-center align-middle" x-text="formatearMoneda(presion.adeudo, true)"></td>
+                                <td class="text-center align-middle" x-text="presion.formaPago"></td>
+                                <td class="text-center align-middle">
+                                    <input type="date" class="form-control" x-model="presion.Fecha" x-show="canClosePresion">
+                                    <span x-show="!canClosePresion" x-text="presion.Fecha || '—'"></span>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <input type="text" class="form-control" x-model="presion.Banco" placeholder="Ingresa Banco" x-show="canClosePresion">
+                                    <span x-show="!canClosePresion" x-text="presion.Banco || '—'"></span>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <button type="button" class="btn btn-danger"
+                                            data-toggle="tooltip"
+                                            x-bind:title="'Descargar ' + presion.NumReq"
+                                            x-on:click="imprimirReq(presion.NumRequi,presion.clave,presion.id_hoja)">
+                                        <img src="../images/icons/download.svg" alt="descargar" height="24" width="24">
+                                    </button>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <img x-show="presion.showDetail == false" src="../images/icons/arrow_down.svg" alt="expandir" height="24" width="24" style="cursor:pointer;" x-on:click="cambiarBooleano(presion.showDetail,indice)">
+                                    <img x-show="presion.showDetail != false" src="../images/icons/arrow_up.svg" alt="colapsar" height="24" width="24" style="cursor:pointer;" x-on:click="cambiarBooleano(presion.showDetail,indice)">
+                                </td>
+                            </tr>
+                            </template>
+                        </tbody>
+                        <tfoot class="table-dark">
+                            <tr>
+                                <td colspan="4" class="text-end">Total:</td>
+                                <td class="text-center align-middle" x-text="formatearMoneda(sumatoria(presiones,'total'),true)"></td>
+                                <td class="text-center align-middle" x-text="formatearMoneda(sumatoria(presiones,'adeudo'),true)"></td>
+                                <td colspan="5"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
             </div>
+        </section>
+
+        <div class="d-flex justify-content-center mt-4 mb-3" x-show="estatus == 'PENDIENTE' && canClosePresion">
+            <button class="tf-btn tf-btn-primary" x-on:click="cerrarPresion" title="Cerrar Presion">CERRAR Y GUARDAR PRESION</button>
         </div>
+
+        <!-- ── Comentario del Director ──────────────────────────────── -->
+        <section class="tf-card mt-4" x-show="canClosePresion || comentarioDirector">
+            <header class="tf-card-header">
+                <div>
+                    <h2 class="tf-card-title"><i class="bi bi-chat-text"></i> Comentario del Director</h2>
+                    <p class="tf-card-sub">Notas visibles para el equipo de compras sobre esta presión.</p>
+                </div>
+                <button x-show="canClosePresion" type="button" class="tf-btn tf-btn-primary tf-btn-sm"
+                        x-on:click="guardarComentarioDirector" x-bind:disabled="savingComentario">
+                    <i class="bi bi-floppy"></i> <span x-text="savingComentario ? 'Guardando...' : 'Guardar nota'"></span>
+                </button>
+            </header>
+            <div class="tf-card-body">
+                <textarea x-show="canClosePresion"
+                          class="form-control" rows="4"
+                          placeholder="Escribe aquí el motivo de aprobación, rechazo parcial o cualquier indicación para compras..."
+                          x-model="comentarioDirector"
+                          maxlength="2000"
+                          style="resize:vertical"></textarea>
+                <div x-show="!canClosePresion" class="p-3 rounded" style="background:var(--tf-surface-2);border:1px solid var(--tf-border);white-space:pre-wrap" x-text="comentarioDirector || '-'">
+                </div>
+                <div class="text-end mt-1" x-show="canClosePresion">
+                    <small class="text-muted"><span x-text="(comentarioDirector || '').length"></span>/2000</small>
+                </div>
+            </div>
+        </section>
     </div>
+<<<<<<< Updated upstream
     <!--scripts de bootstrap, poppers y jquery-->
     <script src="../assets/lib/jquery/jquery-3.7.1.slim.min.js"></script>
     <script src="../assets/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -218,4 +234,21 @@ include_once '../validarSesion.php';
 
 </html>
 
+=======
+</div>
+>>>>>>> Stashed changes
 
+<?php
+$tf_use_vue = false;
+$tf_use_axios = true;
+$tf_use_jquery = true;
+$tf_use_datatables = true;
+$tf_extra_scripts =
+    '<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>' .
+    '<script src="../assets/lib/exceljs/exceljs.min.js"></script>' .
+    '<script src="../assets/lib/xlsx/xlsx.full.min.js"></script>' .
+    '<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js" integrity="sha384-NaWTHo/8YCBYJ59830LTz/P4aQZK1sS0SneOgAvhsIl3zBu8r9RevNg5lHCHAuQ/" crossorigin="anonymous"></script>' .
+    '<script src="../assets/js/pdfGenerate.js"></script>' .
+    '<script src="../assets/js/presiones_detalles.js?v=fase08n"></script>';
+include __DIR__ . '/../includes/layout_bottom.php';
+?>

@@ -29,17 +29,24 @@ $output = "";
 $textExpecial = "";
 
 // --- RBAC + CSRF (Fase 3) ---
-// case 5 = marcar PAGADA, case 7 = cerrar presion (AUTORIZADO).
+// case 5 = marcar PAGADA, case 7 = cerrar presion (AUTORIZADO), case 12 = guardar comentario director.
 // El resto son lecturas para construir la vista de detalle.
 $accionInt = (int)$accion;
-$writeActions = array(5, 7);
+$writeActions = array(5, 7, 12);
+$currentUser = api_get_current_user($conexion);
 if (in_array($accionInt, $writeActions, true)) {
     api_require_csrf($_POST);
     tf_require_permission($conexion, 'presiones.authorize');
 } else {
-    tf_require_permission($conexion, 'presiones.view');
+    if (!tf_has_permission('presiones.view', $currentUser) && !tf_has_permission('direccion.view', $currentUser)) {
+        tf_audit_log($conexion, 'access.denied', 'presiones', null, [
+            'reason' => 'presiones_detail_view_forbidden',
+            'accion' => $accionInt,
+            'uri'    => $_SERVER['REQUEST_URI'] ?? null,
+        ]);
+        api_json_error('No tienes permiso para ver el detalle de presiones', 403);
+    }
 }
-$currentUser = api_get_current_user($conexion);
 
 switch ($accion) {
     case 1:
@@ -243,6 +250,44 @@ switch ($accion) {
         break;
     case 10:
         $data = "";
+        break;
+    case 11:
+        // Obtener comentario del director para una presión
+        $consulta = "SELECT COALESCE(`presiones_comentario_director`, '') AS comentario
+                       FROM `presiones` WHERE `presiones_id` = :id";
+        try {
+            $s = $conexion->prepare($consulta);
+            $s->bindValue(':id', (int)$idPresion, PDO::PARAM_INT);
+            $s->execute();
+            $row = $s->fetch(PDO::FETCH_ASSOC);
+            $data = ['comentario' => $row ? $row['comentario'] : ''];
+        } catch (Exception $e) {
+            // Columna no existe aún (migración pendiente)
+            $data = ['comentario' => ''];
+        }
+        break;
+    case 12:
+        // Guardar comentario del director (CSRF + presiones.authorize)
+        $comentarioDirector = trim((string)($payload['comentario'] ?? ($_POST['comentario'] ?? '')));
+        $presionIdComent = (int)($payload['idPresion'] ?? $idPresion);
+        if ($presionIdComent <= 0) {
+            api_json_error('ID de presion invalido', 422);
+        }
+        try {
+            $upd = $conexion->prepare(
+                "UPDATE `presiones`
+                    SET `presiones_comentario_director` = ?
+                  WHERE `presiones_id` = ?"
+            );
+            $upd->execute([$comentarioDirector !== '' ? $comentarioDirector : null, $presionIdComent]);
+            tf_audit_log($conexion, 'presiones.comentario_director', 'presiones', $presionIdComent, [
+                'director' => $currentUser['user_nameUser'] ?? '',
+                'comentario_length' => mb_strlen($comentarioDirector),
+            ]);
+            $data = ['ok' => true];
+        } catch (Exception $e) {
+            $data = ['ok' => false, 'error' => 'No se pudo guardar (migracion pendiente?): ' . $e->getMessage()];
+        }
         break;
 }
 

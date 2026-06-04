@@ -276,7 +276,7 @@ const appRequesition = new Vue({
             return formattedTime;
         },
         irPresion(idPresion) {
-            localStorage.setItem("obraActiva", idPresion);
+            localStorage.setItem("IdPresion", idPresion);
             window.location.href = url2 + "/presiones.php";
         },
         irMenuCatalago: function(){

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bitacora.php';
 include_once 'conexion.php';
 include_once 'auth.php';
 $objeto = new Conexion();
@@ -213,6 +214,7 @@ switch ($accion) {
         tf_audit_log($conexion, 'requisiciones.hoja.toRevision', 'hojasrequisicion', (int)$idReq, array(
             'comentarios' => $comentarios,
         ));
+        tf_hoja_estatus_log($conexion, (int)$idReq, null, 'REVISION', $comentarios, $currentUser);
         break;
     case 8:
         $consulta = "SELECT `obras_nombre`,`ciudadesObras_nombre` FROM `obras` JOIN estadosobra ON estadosobra.ciudadesObras_id = obras.obras_cuidad WHERE `obras_id` = :obra";
@@ -337,6 +339,7 @@ switch ($accion) {
         tf_audit_log($conexion, 'requisiciones.hoja.toPendiente', 'hojasrequisicion', (int)$idHoja, array(
             'comentarios' => $comentarios,
         ));
+        tf_hoja_estatus_log($conexion, (int)$idHoja, null, 'PENDIENTE', $comentarios, $currentUser);
         break;
     case 13:
         item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
@@ -371,18 +374,18 @@ switch ($accion) {
             $stmt2->execute();
 
             // 3️⃣ Calcular total actualizado
-            $consulta3 = "SELECT SUM(
-                        (itemRequisicion_cantidad * itemRequisicion_precio) 
-                        + itemRequisicion_iva 
-                        - itemRequisicion_retenciones
-                    ) AS TotalItem 
-                  FROM itemrequisicion 
-                  WHERE itemRequisicion_idHoja = :idHoja";
+                        $consulta3 = "SELECT COALESCE(SUM(ROUND(
+                                                (itemRequisicion_cantidad * itemRequisicion_precio) 
+                                                + itemRequisicion_iva 
+                                                - itemRequisicion_retenciones
+                                        , 2)), 0) AS TotalItem 
+                                    FROM itemrequisicion 
+                                    WHERE itemRequisicion_idHoja = :idHoja";
             $stmt3 = $conexion->prepare($consulta3);
             $stmt3->bindParam(':idHoja', $idHoja, PDO::PARAM_INT);
             $stmt3->execute();
             $resultado = $stmt3->fetch(PDO::FETCH_ASSOC);
-            $totalCambio = $resultado['TotalItem'] ?? 0;
+            $totalCambio = round((float)($resultado['TotalItem'] ?? 0), 2);
 
             // 4️⃣ Actualizar total en hojaRequisicion
             $consulta4 = "UPDATE hojasrequisicion 
@@ -447,12 +450,12 @@ $conexion = NULL;
 
 function actualizarTotalHoja(PDO $conexion, $idHoja)
 {
-    $consulta = "SELECT COALESCE(SUM((`itemRequisicion_cantidad` * `itemRequisicion_precio`) + `itemRequisicion_iva` - `itemRequisicion_retenciones`), 0) AS `TotalItem` FROM `itemrequisicion` WHERE `itemRequisicion_idHoja` = :id_hoja";
+    $consulta = "SELECT COALESCE(SUM(ROUND((`itemRequisicion_cantidad` * `itemRequisicion_precio`) + `itemRequisicion_iva` - `itemRequisicion_retenciones`, 2)), 0) AS `TotalItem` FROM `itemrequisicion` WHERE `itemRequisicion_idHoja` = :id_hoja";
     $resultado = $conexion->prepare($consulta);
     $resultado->bindValue(':id_hoja', $idHoja, PDO::PARAM_INT);
     $resultado->execute();
     $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
-    $totalHoja = $data[0]['TotalItem'];
+    $totalHoja = round((float)$data[0]['TotalItem'], 2);
 
     $consulta = "UPDATE `hojasrequisicion` SET `hojaRequisicion_total` = :total WHERE `hojaRequisicion_id` = :id_hoja";
     $resultado = $conexion->prepare($consulta);

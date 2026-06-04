@@ -37,6 +37,32 @@ function tf_login_has_column(PDO $conexion, $columnName) {
     return $cache[$columnName];
 }
 
+/**
+ * Registra un intento fallido de login para la IP dada (si rate limiting está activo).
+ */
+function tf_login_record_fail(PDO $conexion, string $ip, bool $active): void {
+    if (!$active) return;
+    try {
+        $conexion->prepare("INSERT INTO `login_attempts` (`attempt_ip`) VALUES (?)")
+                 ->execute([$ip]);
+    } catch (Exception $e) {
+        // No bloquear el flujo si falla el INSERT
+    }
+}
+
+/**
+ * Limpia los intentos fallidos de login para la IP dada al loguearse con éxito.
+ */
+function tf_login_clear_fails(PDO $conexion, string $ip, bool $active): void {
+    if (!$active) return;
+    try {
+        $conexion->prepare("DELETE FROM `login_attempts` WHERE `attempt_ip` = ?")
+                 ->execute([$ip]);
+    } catch (Exception $e) {
+        // No bloquear el flujo
+    }
+}
+
 tf_session_start();
 tf_security_headers();
 header('Content-Type: application/json; charset=utf-8');
@@ -63,6 +89,44 @@ if ($Usuario === '' || $Contrasena === '') {
     exit;
 }
 
+// ── Rate limiting: máx. 5 intentos fallidos por IP en 15 minutos ─────────────
+$clientIp = (string)($_SERVER['HTTP_X_FORWARDED_FOR']
+    ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]
+    : ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'));
+$clientIp = trim($clientIp);
+
+$rateLimitActive = false;
+try {
+    $chkTable = $conexion->query("SHOW TABLES LIKE 'login_attempts'")->fetchAll();
+    if (!empty($chkTable)) {
+        $rateLimitActive = true;
+        $window    = 15 * 60; // 15 minutos en segundos
+        $maxFails  = 5;
+        $stmtCount = $conexion->prepare(
+            "SELECT COUNT(*) FROM `login_attempts`
+              WHERE `attempt_ip` = ? AND `attempt_at` > NOW() - INTERVAL ? SECOND"
+        );
+        $stmtCount->execute([$clientIp, $window]);
+        $failCount = (int)$stmtCount->fetchColumn();
+
+        if ($failCount >= $maxFails) {
+            http_response_code(429);
+            echo json_encode([
+                'bandera'  => 'false',
+                'user_id'  => 0,
+                'bloqueado' => true,
+                'mensaje'  => 'Demasiados intentos fallidos. Espera 15 minutos.',
+            ], JSON_UNESCAPED_UNICODE);
+            $conexion = null;
+            exit;
+        }
+    }
+} catch (Exception $e) {
+    // Si la tabla no existe o hay error, continuamos sin rate limiting
+    $rateLimitActive = false;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 $roleSelect = $hasUserRoleId ? '`user_role_id`' : 'NULL AS `user_role_id`';
 $estatusSelect = $hasUserEstatus
     ? '`user_estatus`'
@@ -84,6 +148,7 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$user) {
     password_verify($Contrasena, '$2y$10$2b2HqQ4mJm0S0d6Q8rM3Le4F4D0Q0Q4mKx0u4r8rN1M8F3kQY6e5W'); // pseudo-trabajo
     tf_audit_log($conexion, 'login.fail', 'auth', null, "user_not_found:$Usuario");
+    tf_login_record_fail($conexion, $clientIp, $rateLimitActive);
     echo json_encode($dato, JSON_UNESCAPED_UNICODE);
     $conexion = null;
     exit;
@@ -92,6 +157,7 @@ if (!$user) {
 // Usuario inactivo
 if (isset($user['user_estatus']) && $user['user_estatus'] === 'INACTIVO') {
     tf_audit_log($conexion, 'login.fail', 'auth', (int)$user['user_id'], 'user_inactive');
+    tf_login_record_fail($conexion, $clientIp, $rateLimitActive);
     echo json_encode($dato, JSON_UNESCAPED_UNICODE);
     $conexion = null;
     exit;
@@ -105,6 +171,7 @@ $isValid        = $isHashed
 
 if (!$isValid) {
     tf_audit_log($conexion, 'login.fail', 'auth', (int)$user['user_id'], 'bad_password');
+    tf_login_record_fail($conexion, $clientIp, $rateLimitActive);
     echo json_encode($dato, JSON_UNESCAPED_UNICODE);
     $conexion = null;
     exit;
@@ -153,8 +220,9 @@ try {
     // Columna user_lastLogin podria no existir si la migracion aun no se aplico
 }
 
-// Auditar exito
+// Auditar exito + limpiar intentos fallidos de esta IP
 tf_audit_log($conexion, 'login.success', 'auth', (int)$user['user_id'], "role=$roleCode");
+tf_login_clear_fails($conexion, $clientIp, $rateLimitActive);
 
 $dato = [
     'bandera'  => 'true',

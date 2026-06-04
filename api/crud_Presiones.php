@@ -13,6 +13,11 @@ $dia = isset($_POST['dia']) ? trim((string)$_POST['dia']) : '';
 $fecha = isset($_POST['fecha']) ? trim((string)$_POST['fecha']) : '';
 $obra = $_POST['obra'] ?? 0;
 $alias = isset($_POST['alias']) ? trim((string)$_POST['alias']) : '';
+$page = isset($_POST['page']) ? (int)$_POST['page'] : 1;
+$limite = isset($_POST['limite']) ? (int)$_POST['limite'] : 20;
+$search = isset($_POST['search']) ? trim((string)$_POST['search']) : '';
+$estatus = isset($_POST['estatus']) ? trim((string)$_POST['estatus']) : '';
+$serverSide = isset($_POST['serverSide']) ? (int)$_POST['serverSide'] : 0;
 
 // --- RBAC + CSRF (Fase 3) ---
 if ($accion === 3) {
@@ -39,13 +44,72 @@ switch ($accion) {
     case 1:
         $obraId = api_require_positive_int($obra, 'Obra invalida');
         tf_require_obra_access($conexion, $obraId, $currentUser);
+        $page = max(1, $page);
+        $limite = max(5, min(100, $limite));
+        $offset = ($page - 1) * $limite;
+
+        $where = " WHERE `presiones_obra` = ?";
+        $params = array($obraId);
+
+        if ($estatus !== '') {
+            $where .= " AND `presiones_estatus` = ?";
+            $params[] = $estatus;
+        }
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+            $where .= " AND (
+                `presiones_nombre` LIKE ?
+                OR `presiones_alias` LIKE ?
+                OR `presiones_semana` LIKE ?
+                OR `presiones_dia` LIKE ?
+            )";
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+        }
+
+        $sqlTotal = "SELECT COUNT(*) FROM `presiones`" . $where;
+        $stTotal = $conexion->prepare($sqlTotal);
+        $stTotal->execute($params);
+        $total = (int)$stTotal->fetchColumn();
+
         $consulta = "SELECT `presiones_id`, `presiones_nombre`, `presiones_alias`, `presiones_estatus`, `presiones_semana`, `presiones_dia`
-            FROM `presiones`
-            WHERE `presiones_obra` = ?
-            ORDER BY `presiones_fechaCreacion` DESC";
+            FROM `presiones`" . $where . "
+            ORDER BY `presiones_fechaCreacion` DESC
+            LIMIT " . (int)$limite . " OFFSET " . (int)$offset;
         $resultado = $conexion->prepare($consulta);
-        $resultado->execute(array($obraId));
-        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
+        $resultado->execute($params);
+        $rows = $resultado->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($serverSide === 1) {
+            $statsSql = "SELECT
+                    COUNT(*) AS total_general,
+                    SUM(CASE WHEN `presiones_estatus` = 'PENDIENTE' THEN 1 ELSE 0 END) AS pendientes,
+                    SUM(CASE WHEN `presiones_estatus` = 'AUTORIZADO' THEN 1 ELSE 0 END) AS autorizadas
+                FROM `presiones`
+                WHERE `presiones_obra` = ?";
+            $stStats = $conexion->prepare($statsSql);
+            $stStats->execute(array($obraId));
+            $stats = $stStats->fetch(PDO::FETCH_ASSOC) ?: array();
+
+            $pages = (int)ceil($total / $limite);
+            $data = array(
+                'rows' => $rows,
+                'total' => $total,
+                'page' => $page,
+                'pages' => max(1, $pages),
+                'limite' => $limite,
+                'stats' => array(
+                    'total' => (int)($stats['total_general'] ?? 0),
+                    'pendientes' => (int)($stats['pendientes'] ?? 0),
+                    'autorizadas' => (int)($stats['autorizadas'] ?? 0),
+                ),
+            );
+        } else {
+            // Compatibilidad legacy
+            $data = $rows;
+        }
         break;
 
     case 2:

@@ -1,9 +1,37 @@
 <?php
 include_once '../validarSesion.php';
-?>
-<!DOCTYPE html>
-<html>
+require_once __DIR__ . '/../api/rbac.php';
+require_once __DIR__ . '/../api/conexion.php';
 
+$__pdo  = (new Conexion())->Conectar();
+$__user = tf_current_user($__pdo);
+
+tf_require_any_permission($__pdo, ['proveedores.manage', 'catalogos.view'], 'No tienes permiso para agregar proveedores');
+
+$usuario_nombre  = $__user['user_name']    ?? '';
+$usuario_rol     = $__user['role']['name'] ?? 'Usuario';
+$usuario_rolCode = $__user['role']['code'] ?? 'usuario';
+$usuario_perms   = $__user['permissions']  ?? [];
+
+$tf_page_title     = 'Agregar Proveedor';
+$tf_active_nav     = 'catalogos';
+$tf_breadcrumb     = [['Inicio', './index.php'], ['Catalogos', './menu_catalago.php'], ['Agregar Proveedor', '#']];
+$tf_user           = [
+    'name'        => $usuario_nombre,
+    'role'        => $usuario_rol,
+    'roleCode'    => $usuario_rolCode,
+    'initials'    => '',
+    'permissions' => $usuario_perms,
+];
+$tf_show_direccion = in_array($usuario_rolCode, ['admin','director'], true);
+$tf_show_admin     = in_array($usuario_rolCode, ['admin', 'desarrollador'], true) || tf_has_permission('admin.users.view', $__user);
+$tf_show_subbar    = true;
+$tf_user_id_js     = (string)($__user['user_id'] ?? '');
+
+include __DIR__ . '/../includes/layout_top.php';
+?>
+
+<<<<<<< Updated upstream
 <head>
     <meta charset="utf8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
@@ -27,178 +55,103 @@ include_once '../validarSesion.php';
     <link rel="stylesheet" href="../assets/css/main.css">
     <title>Agregar Proveedor</title>
 </head>
+=======
+<div id="AppNewProv" class="tf-page-inner" x-data="addProveedorApp()" x-init="init()" x-cloak>
+    <header class="tf-page-header">
+        <div>
+            <span class="tf-eyebrow">Catalogo de proveedores</span>
+            <h1 class="tf-page-title">Agregar Proveedor</h1>
+            <p class="tf-page-lead">Registra un nuevo proveedor con sus datos fiscales y bancarios.</p>
+        </div>
+    </header>
+>>>>>>> Stashed changes
 
-<body class="app-layout">
-    <div id="AppNewProv">
-        <!--sidebar-->
-        <div class="d-flex flex-column flex-shrink-0 p-3 text-white position-fixed top-0 start-0 h-100 app-sidebar" id="sidebar">
-            <div class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
-                <div class="d-flex flex-row">
-                    <div class="d-flex align-items-center me-3">
-                        <img src="../images/icons/user.svg" alt="user-icon" height="60" width="60">
-                    </div>
-                    <div class="d-flex flex-column my-3">
-                        <span class="fs-5"> {{NameUser}}</span>
-                    </div>
-                </div>
-            </div>
-            <hr>
-            <div id="sideBarItem" class="mb-auto overflow-auto page-content">
-                <ul class="nav nav-pills flex-column f-5" id="v-pills-tab" role="tablist" aria-orientation="vertical">
-                    <li v-if="users.length && users[0].user_directionAcess == 1">
-                        <a href="#" class="nav-link text-white" id="v-pills-reports-tab" data-bs-toggle="pill" data-bs-target="#v-pills-reports" type="button" role="tab" aria-controls="v-pills-reports" aria-selected="false" @click="irDireecion">
-                            <img class="me-2" src="../images/icons/ceo.svg" alt="user-icon" height="24" width="24">
-                            DIRECCION
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" class="nav-link text-white" aria-current="page" id="v-pills-obras-tab" data-bs-toggle="pill" data-bs-target="#v-pills-obras" type="button" role="tab" aria-controls="v-pills-obras" aria-selected="true">
-                            <img class="me-2" src="../images/icons/obras.svg" alt="user-icon" height="24" width="24">
-                            OBRAS
-                        </a>
-                        <div class="tab-content" id="v-pills-tabContent">
-                            <ul class="tab-pane fade nav nav-pills flex-column mb-auto" id="v-pills-obras" role="tabpanel" aria-labelledby="v-pills-obras-tab">
-                                <li v-for="obra in this.obras">
-                                    <a style="cursor: pointer" class="nav-link text-white ms-4" aria-current="page" @click="irObra(obra.obras_id)">{{obra.obras_nombre}}</a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
-                    <li>
-                        <a href="#" class="nav-link text-white" aria-current="page" id="v-pills-catalago-tab" data-bs-toggle="pill" data-bs-target="#v-pills-catalago" type="button" role="tab" aria-controls="v-pills-catalago" aria-selected="false" @click="irMenuCatalago">
-                            <img class="me-2" src="../images/icons/catalagos.svg" alt="user-icon" height="24" width="24">
-                            CATALAGOS
-                        </a>
-                    </li>
-                </ul>
-            </div>
-            <hr>
-            <div class="dropdown">
-                <a href="./closeSesion.php" class="d-flex align-items-center text-white text-decoration-none f-5" aria-expanded="false">
-                    <img class="me-2" src="../images/icons/logout.svg" alt="user-icon" height="24" width="24">
-                    <span>CERRAR SESION</span>
-                </a>
-            </div>
-    </div>
-    <div class="d-flex flex-column flex-shrink-0 h-100 position-fixed top-0 end-0 app-main">
-        <?php include __DIR__ . '/../includes/legacy_navbar.php'; ?>
-        <nav class="nav shadow-sm d-flex align-items-center" id="navtab" aria-label="breadcrumb" aria-current="page">
-            <ol class="breadcrumb py-2 px-3 my-0">
-                <li class="breadcrumb-item">
-                    <a href="./index.php">
-                        <img class="" src="../images/icons/home.svg" alt="user-icon" height="24" width="24">
-                        <span>Inicio</span>
-                    </a>
-                </li>
-                <li class="breadcrumb-item"><a href="./menu_catalago.php"><span>Menu Catalago</span></a></li>
-                <li class="breadcrumb-item"><a href="./proveedores.php"><span>Catalago de Proveedores</span></a></li>
-                <li class="breadcrumb-item active" aria-current="page"><span>Agregar Proveedor</span></li>
-            </ol>
-        </nav>
-        <div class="container page-shell overflow-auto page-content">
-            <div class="page-hdr">
-                <div class="page-hdr-left">
-                    <h2 class="page-title">Agregar Proveedor</h2>
-                    <p class="page-lead">Registra un nuevo proveedor con sus datos fiscales y bancarios.</p>
-                </div>
-            </div>
+    <section class="tf-card">
+        <div class="tf-card-body">
             <div class="row my-3">
                 <div class="col">
                     <label for="nameProv" class="form-label">Nombre del Proveedor</label>
-                    <input type="text" class="form-control border border-primary-subtle border-2" id="nameProv" placeholder="Ingresa informacion..." v-model="nombre_prov" require>
-                    <div class="invalid-feedback">
-                        Por favor ingresa el nombre del proveedor.
-                    </div>
+                    <input type="text" class="form-control" id="nameProv" placeholder="Ingresa informacion..." x-model="nombre_prov" require>
                 </div>
             </div>
             <div class="row my-3">
                 <div class="col">
                     <label for="rfcProv" class="form-label">RFC del Proveedor</label>
-                    <input type="text" class="form-control border border-primary-subtle border-2" id="rfcProv" placeholder="Ingresa informacion..." v-model="rfc_prov" require>
+                    <input type="text" class="form-control" id="rfcProv" placeholder="Ej: ABCD0102031A2" x-model="rfc_prov" x-on:input="normalizarRFC" x-bind:class="rfc_prov.length ? (rfcValido ? 'is-valid' : 'is-invalid') : ''" required>
+                    <div class="form-text">Formato esperado: 12 o 13 caracteres (persona moral/física).</div>
+                    <div class="invalid-feedback d-block" x-show="rfc_prov.length && !rfcValido">RFC inválido.</div>
                 </div>
                 <div class="col">
                     <label for="clabeProv" class="form-label">Clave Bancaria del Proveedor</label>
-                    <input type="text" class="form-control border border-primary-subtle border-2" id="clabeProv" placeholder="Ingresa informacion..." v-model="clabe_prov" require>
+                    <input type="text" class="form-control" id="clabeProv" placeholder="18 dígitos" x-model="clabe_prov" x-on:input="normalizarClabe" x-bind:class="clabe_prov.length ? (clabeValida ? 'is-valid' : 'is-invalid') : ''" maxlength="18" required>
+                    <div class="form-text">La CLABE debe tener 18 dígitos y dígito verificador válido.</div>
+                    <div class="invalid-feedback d-block" x-show="clabe_prov.length && !clabeValida">CLABE inválida.</div>
                 </div>
                 <div class="col">
                     <label for="cuentaProv" class="form-label">Cuenta Bancaria del Proveedor</label>
-                    <input type="text" class="form-control border border-primary-subtle border-2" id="cuentaProv" placeholder="Ingresa informacion..." v-model="cuenta_prov" require>
+                    <input type="text" class="form-control" id="cuentaProv" placeholder="Ingresa informacion..." x-model="cuenta_prov" required>
                 </div>
             </div>
             <div class="row my-3">
                 <div class="col">
-                    <label for="rfcProv" class="form-label">Numero de Tarjeta</label>
-                    <input type="text" class="form-control border border-primary-subtle border-2" id="rfcProv" placeholder="Ingresa informacion..." v-model="tarjeta_prov">
+                    <label class="form-label">Numero de Tarjeta</label>
+                    <input type="text" class="form-control" placeholder="Ingresa informacion..." x-model="tarjeta_prov">
                 </div>
                 <div class="col">
-                    <label for="clabeProv" class="form-label">Numero de Referencia del Proveedor</label>
-                    <input type="text" class="form-control border border-primary-subtle border-2" id="clabeProv" placeholder="Ingresa informacion..." v-model="referencia_prov">
+                    <label class="form-label">Numero de Referencia del Proveedor</label>
+                    <input type="text" class="form-control" placeholder="Ingresa informacion..." x-model="referencia_prov">
                 </div>
                 <div class="col">
-                    <label for="cuentaProv" class="form-label">Tipo de Proveedor</label>
-                    <input type="text" class="form-control border border-primary-subtle border-2" id="cuentaProv" placeholder="Ingresa informacion..." v-model="tipo_prov">
+                    <label class="form-label">Tipo de Proveedor</label>
+                    <input type="text" class="form-control" placeholder="Ingresa informacion..." x-model="tipo_prov">
                 </div>
             </div>
             <div class="row my-3">
                 <div class="col">
-                    <label for="bankProv" class="form-label">Banco del Proveedor</label>
-                    <select class="form-select border border-primary-subtle border-2" aria-label="Default select example" v-model="selected_Banco">
+                    <label class="form-label">Banco del Proveedor</label>
+                    <select class="form-select" x-model="selected_Banco">
                         <option value="">Selecciona Banco</option>
-                        <option v-for="(banco,indice) of bancos" :value="banco.banco_nombreComercial">{{banco.banco_id}}- {{banco.banco_nombreComercial}}</option>
+                        <template x-for="(banco, indice) in bancos" :key="banco.banco_id">
+                            <option :value="banco.banco_nombreComercial" x-text="banco.banco_id + '- ' + banco.banco_nombreComercial"></option>
+                        </template>
                     </select>
                 </div>
                 <div class="col">
-                    <label for="sucursalProv" class="form-label">Sucursal Bancaria del Proveedor</label>
-                    <input type="text" class="form-control border border-primary-subtle border-2" id="sucursalProv" placeholder="Ingresa informacion..." v-model="suc_prov">
+                    <label class="form-label">Sucursal Bancaria del Proveedor</label>
+                    <input type="text" class="form-control" placeholder="Ingresa informacion..." x-model="suc_prov">
                 </div>
             </div>
             <div class="row my-3">
                 <div class="col">
-                    <label for="adressProv" class="form-label">Direccion del Proveedor</label>
-                    <input type="text" class="form-control border border-primary-subtle border-2" id="adressProv" placeholder="Ingresa informacion..." v-model="direccion_prov">
+                    <label class="form-label">Direccion del Proveedor</label>
+                    <input type="text" class="form-control" placeholder="Ingresa informacion..." x-model="direccion_prov">
                 </div>
             </div>
             <div class="row my-3">
                 <div class="col">
-                    <label for="rfcProv" class="form-label">Telefono del Proveedor</label>
-                    <input type="text" class="form-control border border-primary-subtle border-2" id="rfcProv" placeholder="Ingresa informacion..." v-model="tel_prov">
+                    <label class="form-label">Telefono del Proveedor</label>
+                    <input type="text" class="form-control" placeholder="Ingresa informacion..." x-model="tel_prov">
                 </div>
                 <div class="col">
-                    <label for="clabeProv" class="form-label">Correo Electronico del Proveedor</label>
-                    <input type="email" class="form-control border border-primary-subtle border-2" id="clabeProv" placeholder="Ingresa la Clabe Bancaria del Proveedor" v-model="email_prov">
+                    <label class="form-label">Correo Electronico del Proveedor</label>
+                    <input type="email" class="form-control" placeholder="Ingresa correo del proveedor" x-model="email_prov">
                 </div>
             </div>
-            <div class="row w-100 mt-5 mb-5 mx-auto">
+            <div class="row w-100 mt-5 mb-2 mx-auto">
                 <div class="col px-0 d-grid gap-2">
-                    <button class="btn btn-success" @click="agregarProveedor" title="Agregar Proveedor">
+                    <button class="tf-btn tf-btn-primary" x-on:click="agregarProveedor" title="Agregar Proveedor" x-bind:disabled="!puedeGuardar">
                         <span class="text-center">Agregar Proveedor</span>
                     </button>
                 </div>
             </div>
         </div>
-    </div>
-    </div>
-    <!--scripts de bootstrap, poppers y jquery-->
-    <script src="../assets/lib/jquery/jquery-3.7.1.slim.min.js"></script>
-    <script src="../assets/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    </section>
+</div>
 
-    <!-- scripts de vue.js-->
-    <script src="../assets/lib/vue/vue.min.js"></script>
-
-    <!--Script de axios-->
-    <script src="../assets/lib/axios/axios.min.js"></script>
-
-    <!--scripts de sweetalert-->
-    <script src="../assets/lib/sweetalert/sweetalert2.min.js"></script>
-
-    <!--esta es la llamada cdn de datatable-->
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.js"></script>
-    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.js"></script>
-
-    <!-- scripts constume-->
-    <script src="../assets/js/agregar_proveedor.js"></script>
-</body>
-
-</html>
-
-
+<?php
+$tf_use_vue = false;
+$tf_use_jquery = true;
+$tf_extra_head = '<style>[x-cloak]{display:none !important;}</style>';
+$tf_extra_scripts = '<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script><script src="../assets/js/agregar_proveedor.js?v=fase08b"></script>';
+include __DIR__ . '/../includes/layout_bottom.php';
+?>

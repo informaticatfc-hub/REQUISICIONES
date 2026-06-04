@@ -1,6 +1,7 @@
 <?php
 include_once 'conexion.php';
 include_once 'auth.php';
+require_once __DIR__ . '/bitacora.php';
 $objeto = new Conexion();
 $conexion = $objeto->Conectar();
 
@@ -136,6 +137,8 @@ switch ($accion) {
         $resultado->bindValue(':estatus',        'NUEVO', PDO::PARAM_STR);
 
         $resultado->execute();
+        tf_hoja_set_creator($conexion, $id_hoja, $currentUser);
+        tf_hoja_creada_log($conexion, $id_hoja, $currentUser);
 
         // 3) Actualiza el contador de hojas con parámetros (sin concatenar)
         $consulta = "UPDATE `requisiciones` 

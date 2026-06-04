@@ -17,6 +17,11 @@ $Hoja = $_POST['hoja'] ?? 0;
 $idReq = $_POST['idReq'] ?? 0;
 $numReq = $_POST['numeroReq'] ?? '';
 $id_presion = $_POST['id_presion'] ?? 0;
+$page = isset($_POST['page']) ? (int)$_POST['page'] : 1;
+$limite = isset($_POST['limite']) ? (int)$_POST['limite'] : 20;
+$search = isset($_POST['search']) ? trim((string)$_POST['search']) : '';
+$serverSide = isset($_POST['serverSide']) ? (int)$_POST['serverSide'] : 0;
+$soloMias = isset($_POST['soloMias']) && (int)$_POST['soloMias'] === 1;
 
 // --- RBAC + CSRF (Fase 3) --------------------------------------------------
 // Lecturas exigen requisiciones.view; cada write exige su permiso especifico
@@ -67,23 +72,83 @@ switch ($accion) {
     case 1:
         $obraId = api_require_positive_int($obra, 'Obra invalida');
         tf_require_obra_access($conexion, $obraId, $currentUser);
-        $consulta = "SELECT `requisicion_id`, `requisicion_Numero`, `requisicion_Clave`, `requisicion_Nombre`, `requisicion_estatus`
-            FROM `requisiciones`
-            WHERE `requisicion_Obra` = ?
-            AND COALESCE(`requisicion_estatus`, '') NOT IN ('CERRADA', 'CANCELADA')
-            ORDER BY `requisicion_fechaSolicitud` DESC, `requisicion_Numero` DESC";
+        $page = max(1, $page);
+        $limite = max(5, min(100, $limite));
+        $offset = ($page - 1) * $limite;
+
+        $where = " WHERE `requisicion_Obra` = ?
+                   AND COALESCE(`requisicion_estatus`, '') NOT IN ('CERRADA', 'CANCELADA')";
+        $params = array($obraId);
+        if ($soloMias && isset($currentUser['user_id'])) {
+            $where .= " AND `requisicion_userCreado` = ?";
+            $params[] = (int)$currentUser['user_id'];
+        }
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+            $where .= " AND (
+                `requisicion_Numero` LIKE ?
+                OR `requisicion_Clave` LIKE ?
+                OR `requisicion_Nombre` LIKE ?
+            )";
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+        }
+
+        $sqlTotal = "SELECT COUNT(*) FROM `requisiciones`" . $where;
+        $stTotal = $conexion->prepare($sqlTotal);
+        $stTotal->execute($params);
+        $total = (int)$stTotal->fetchColumn();
+
+        $sqlStats = "SELECT
+                SUM(CASE WHEN `requisicion_estatus` = 'ABIERTO' THEN 1 ELSE 0 END) AS abiertas,
+                SUM(CASE WHEN `requisicion_estatus` IN ('CERRADO', 'CERRADA') THEN 1 ELSE 0 END) AS cerradas
+            FROM `requisiciones`" . $where;
+        $stStats = $conexion->prepare($sqlStats);
+        $stStats->execute($params);
+        $stats = $stStats->fetch(PDO::FETCH_ASSOC) ?: array('abiertas' => 0, 'cerradas' => 0);
+
+        $consulta = "SELECT
+                `requisicion_id`, `requisicion_Numero`, `requisicion_Clave`, `requisicion_Nombre`,
+                `requisicion_estatus`,
+                COALESCE((SELECT SUM(h.hojaRequisicion_total)
+                          FROM hojasrequisicion h
+                          WHERE h.hojaRequisicion_idReq = requisiciones.requisicion_id
+                         ), 0) AS requisicion_montoTotal
+            FROM `requisiciones`" . $where . "
+            ORDER BY `requisicion_fechaSolicitud` DESC, `requisicion_Numero` DESC
+            LIMIT " . (int)$limite . " OFFSET " . (int)$offset;
         $resultado = $conexion->prepare($consulta);
-        $resultado->execute(array($obraId));
+        $resultado->execute($params);
         $dataArray = $resultado->fetchAll(PDO::FETCH_ASSOC);
+
+        $rows = array();
         foreach ($dataArray as $row) {
-            $data[] = array(
+            $rows[] = array(
                 'requisicion_id' => $row['requisicion_id'],
                 'requisicion_Numero' => $row['requisicion_Numero'],
                 'requisicion_Clave' => $row['requisicion_Clave'],
                 'requisicion_Nombre' => $row['requisicion_Nombre'],
                 'requisicion_estatus' => $row['requisicion_estatus'],
+                'requisicion_montoTotal' => (float)$row['requisicion_montoTotal'],
                 'requisicion_EditShow' => false,
             );
+        }
+
+        if ($serverSide === 1) {
+            $pages = (int)ceil($total / $limite);
+            $data = array(
+                'rows' => $rows,
+                'total' => $total,
+                'page' => $page,
+                'pages' => max(1, $pages),
+                'limite' => $limite,
+                'abiertas' => (int)($stats['abiertas'] ?? 0),
+                'cerradas' => (int)($stats['cerradas'] ?? 0),
+            );
+        } else {
+            // Compatibilidad legacy: devuelve arreglo plano cuando no viene serverSide
+            $data = $rows;
         }
         break;
 

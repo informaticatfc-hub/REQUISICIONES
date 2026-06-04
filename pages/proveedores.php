@@ -17,7 +17,7 @@ $usuario_sesion = $__user['user_nameUser'] ?? ($_SESSION['Usuario'] ?? '');
 $usuario_nombre = $__user['user_name']     ?? $usuario_sesion;
 $usuario_rol    = $__user['role']['name']  ?? 'Residente';
 $usuario_rolCode= $__user['role']['code']  ?? 'residente';
-$usuario_dirAcc = (int)($__user['user_directionAcess'] ?? 0);
+$usuario_dirAcc = tf_user_has_direction_access($__user) ? 1 : 0;
 $usuario_perms  = $__user['permissions']   ?? [];
 
 // Capacidades para gates visuales
@@ -30,7 +30,7 @@ $tf_page_title     = 'Proveedores';
 $tf_active_nav     = 'catalogos';
 $tf_breadcrumb     = [
     ['Catalogos',  './menu_catalago.php'],
-    ['Proveedores', './proveedores.php'],
+    ['Proveedores', '#'],
 ];
 $tf_user           = [
     'name'        => $usuario_nombre,
@@ -40,7 +40,7 @@ $tf_user           = [
     'permissions' => $usuario_perms,
 ];
 $tf_show_direccion = in_array($usuario_rolCode, ['admin', 'director'], true) || $usuario_dirAcc === 1;
-$tf_show_admin     = $usuario_rolCode === 'admin';
+$tf_show_admin     = in_array($usuario_rolCode, ['admin', 'desarrollador'], true) || tf_has_permission('admin.users.view', $__user);
 $tf_show_subbar    = true;
 $tf_user_id_js     = (string)$usuario_sesion;
 
@@ -55,7 +55,7 @@ $tf_subbar_extra = '
 include __DIR__ . '/../includes/layout_top.php';
 ?>
 
-<div id="AppProveedores" class="tf-page-inner">
+<div id="AppProveedores" class="tf-page-inner" x-data="proveedoresApp()" x-init="init()" x-cloak>
 
     <!-- ============================================================
          Page header
@@ -80,7 +80,7 @@ include __DIR__ . '/../includes/layout_top.php';
     <!-- ============================================================
          KPI grid
          ============================================================ -->
-    <section class="tf-kpi-grid" aria-label="Resumen rapido" v-cloak>
+    <section class="tf-kpi-grid" aria-label="Resumen rapido" x-cloak>
         <article class="tf-kpi">
             <div class="tf-kpi-head">
                 <span class="tf-kpi-icon tf-kpi-icon-primary">
@@ -88,7 +88,7 @@ include __DIR__ . '/../includes/layout_top.php';
                 </span>
                 <span class="tf-kpi-label">Total proveedores</span>
             </div>
-            <div class="tf-kpi-value">{{ proveedores.length }}</div>
+            <div class="tf-kpi-value" x-text="proveedores.length"></div>
             <div class="tf-kpi-foot">
                 <span>Registrados en catalogo</span>
             </div>
@@ -101,7 +101,7 @@ include __DIR__ . '/../includes/layout_top.php';
                 </span>
                 <span class="tf-kpi-label">Activos</span>
             </div>
-            <div class="tf-kpi-value">{{ countActivos }}</div>
+            <div class="tf-kpi-value" x-text="countActivos"></div>
             <div class="tf-kpi-foot">
                 <span>Disponibles para uso</span>
             </div>
@@ -114,7 +114,7 @@ include __DIR__ . '/../includes/layout_top.php';
                 </span>
                 <span class="tf-kpi-label">Filtrados</span>
             </div>
-            <div class="tf-kpi-value">{{ proveedoresFiltrados.length }}</div>
+            <div class="tf-kpi-value" x-text="proveedoresFiltrados.length"></div>
             <div class="tf-kpi-foot">
                 <span>Coinciden con la busqueda</span>
             </div>
@@ -130,20 +130,20 @@ include __DIR__ . '/../includes/layout_top.php';
                 <h2 class="tf-card-title">
                     <i class="bi bi-list-ul"></i> Listado
                 </h2>
-                <p class="tf-card-sub" v-cloak>
-                    Pagina {{ paginaActual }} de {{ totalPaginas }}
-                    &middot; {{ proveedoresFiltrados.length }} resultado(s)
+                <p class="tf-card-sub" x-cloak>
+                    Pagina <span x-text="paginaActual"></span> de <span x-text="totalPaginas"></span>
+                    &middot; <span x-text="proveedoresFiltrados.length"></span> resultado(s)
                 </p>
             </div>
             <div class="d-flex align-items-center gap-2" style="flex-wrap:wrap">
                 <input type="search"
-                       v-model="filtro"
-                       @input="paginaActual = 1"
+                       x-model="filtro"
+                       x-on:input="paginaActual = 1"
                        class="form-control form-control-sm"
                        placeholder="Buscar por nombre o RFC..."
                        style="min-width:240px">
-                <select v-model="filtroEstatus"
-                        @change="paginaActual = 1"
+                <select x-model="filtroEstatus"
+                        x-on:change="paginaActual = 1"
                         class="form-select form-select-sm"
                         style="min-width:140px">
                     <option value="">Todos</option>
@@ -156,19 +156,19 @@ include __DIR__ . '/../includes/layout_top.php';
         <div class="tf-card-body p-0">
 
             <!-- Loader -->
-            <div v-if="cargando" class="tf-empty">
+            <div x-show="cargando" class="tf-empty">
                 <i class="bi bi-arrow-clockwise"></i>
                 <p>Cargando proveedores...</p>
             </div>
 
             <!-- Vacio -->
-            <div v-else-if="!proveedoresFiltrados.length" class="tf-empty" v-cloak>
+            <div x-show="!cargando && !proveedoresFiltrados.length" class="tf-empty" x-cloak>
                 <i class="bi bi-inbox"></i>
                 <p>No se encontraron proveedores con esos criterios.</p>
             </div>
 
             <!-- Tabla -->
-            <div v-else class="overflow-auto" v-cloak>
+            <div x-show="!cargando && proveedoresFiltrados.length" class="overflow-auto" x-cloak>
                 <table class="tf-admin-table">
                     <thead>
                         <tr>
@@ -180,85 +180,87 @@ include __DIR__ . '/../includes/layout_top.php';
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="prov in proveedoresPagina" :key="prov.proveedor_id">
+                        <template x-for="prov in proveedoresPagina" :key="prov.proveedor_id">
+                        <tr>
                             <td>
-                                <strong>{{ prov.proveedor_nombre }}</strong>
-                                <div v-if="prov.proveedor_email" class="small text-muted">
-                                    <i class="bi bi-envelope"></i> {{ prov.proveedor_email }}
+                                <strong x-text="prov.proveedor_nombre"></strong>
+                                <div x-show="prov.proveedor_email" class="small text-muted">
+                                    <i class="bi bi-envelope"></i> <span x-text="prov.proveedor_email"></span>
                                 </div>
                             </td>
                             <td>
-                                <code style="font-size:.82rem">{{ prov.proveedor_rfc || '-' }}</code>
+                                <code style="font-size:.82rem" x-text="prov.proveedor_rfc || '-'"></code>
                             </td>
                             <td>
-                                <span>{{ prov.proveedor_banco || '-' }}</span>
+                                <span x-text="prov.proveedor_banco || '-'"></span>
                             </td>
                             <td>
                                 <span class="tf-status"
-                                      :class="prov.proveedor_estatus === 'ACTIVO' ? 'tf-status-active' : 'tf-status-inactive'">
-                                    {{ prov.proveedor_estatus }}
+                                      :class="prov.proveedor_estatus === 'ACTIVO' ? 'tf-status-active' : 'tf-status-inactive'"
+                                      x-text="prov.proveedor_estatus">
                                 </span>
                             </td>
                             <td style="text-align:right; white-space:nowrap">
                                 <button type="button"
                                         class="tf-btn tf-btn-ghost tf-btn-sm"
                                         title="Consultar"
-                                        @click="viewProveedor(prov.proveedor_id)">
+                                        x-on:click="viewProveedor(prov.proveedor_id)">
                                     <i class="bi bi-eye"></i>
                                 </button>
                                 <?php if ($canManage): ?>
                                 <button type="button"
                                         class="tf-btn tf-btn-ghost tf-btn-sm"
                                         title="Editar"
-                                        @click="editProveedor(prov)">
+                                        x-on:click="editProveedor(prov)">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <button type="button"
                                         class="tf-btn tf-btn-ghost tf-btn-sm text-danger"
                                         title="Desactivar"
-                                        @click="desactivarProveedor(prov)">
+                                        x-on:click="desactivarProveedor(prov)">
                                     <i class="bi bi-trash"></i>
                                 </button>
                                 <?php endif; ?>
                             </td>
                         </tr>
+                        </template>
                     </tbody>
                 </table>
             </div>
         </div>
 
         <!-- Pager -->
-        <footer v-if="!cargando && totalPaginas > 1"
+        <footer x-show="!cargando && totalPaginas > 1"
                 class="tf-card-footer d-flex align-items-center justify-content-between"
                 style="padding:12px 16px;border-top:1px solid var(--tf-border);flex-wrap:wrap;gap:8px"
-                v-cloak>
+                x-cloak>
             <div class="small text-muted">
-                Mostrando {{ rangoInicio }} - {{ rangoFin }} de {{ proveedoresFiltrados.length }}
+                Mostrando <span x-text="rangoInicio"></span> - <span x-text="rangoFin"></span> de <span x-text="proveedoresFiltrados.length"></span>
             </div>
             <div class="d-flex align-items-center gap-2">
                 <button type="button"
                         class="tf-btn tf-btn-ghost tf-btn-sm"
                         :disabled="paginaActual === 1"
-                        @click="paginaActual = 1">
+                        x-on:click="paginaActual = 1">
                     <i class="bi bi-chevron-double-left"></i>
                 </button>
                 <button type="button"
                         class="tf-btn tf-btn-ghost tf-btn-sm"
                         :disabled="paginaActual === 1"
-                        @click="paginaActual--">
+                        x-on:click="paginaActual--">
                     <i class="bi bi-chevron-left"></i> Anterior
                 </button>
-                <span class="small">Pag. {{ paginaActual }} / {{ totalPaginas }}</span>
+                <span class="small">Pag. <span x-text="paginaActual"></span> / <span x-text="totalPaginas"></span></span>
                 <button type="button"
                         class="tf-btn tf-btn-ghost tf-btn-sm"
                         :disabled="paginaActual === totalPaginas"
-                        @click="paginaActual++">
+                        x-on:click="paginaActual++">
                     Siguiente <i class="bi bi-chevron-right"></i>
                 </button>
                 <button type="button"
                         class="tf-btn tf-btn-ghost tf-btn-sm"
                         :disabled="paginaActual === totalPaginas"
-                        @click="paginaActual = totalPaginas">
+                        x-on:click="paginaActual = totalPaginas">
                     <i class="bi bi-chevron-double-right"></i>
                 </button>
             </div>
@@ -268,13 +270,19 @@ include __DIR__ . '/../includes/layout_top.php';
 </div>
 
 <?php
-$canManageJs = $canManage ? 'true' : 'false';
-$tf_inline_script = <<<JS
+$tf_inline_script = 'window.TF_PROV_CONFIG = ' . json_encode([
+    'canManage' => (bool)$canManage,
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';';
+$tf_extra_scripts = '<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>'
+    . '<script src="../assets/js/proveedores.js?v=fase08u"></script>';
+
+/* proveedores.js (external, see assets/js/proveedores.js) — heredoc below is dead but kept for git history */
+if (false) {
+$__unused = <<<JS
     var url = "../api/crud_proveedor.php";
 
-    new Vue({
-        el: "#AppProveedores",
-        data: {
+    function proveedoresApp() {
+        return {
             proveedores: [],
             cargando: true,
             filtro: "",
@@ -282,16 +290,15 @@ $tf_inline_script = <<<JS
             paginaActual: 1,
             porPagina: 50,
             canManage: {$canManageJs}
-        },
-        computed: {
-            countActivos: function () {
+        ,
+            get countActivos() {
                 var c = 0;
                 for (var i = 0; i < this.proveedores.length; i++) {
                     if (this.proveedores[i].proveedor_estatus === 'ACTIVO') c++;
                 }
                 return c;
             },
-            proveedoresFiltrados: function () {
+            get proveedoresFiltrados() {
                 var q = (this.filtro || "").trim().toLowerCase();
                 var est = this.filtroEstatus;
                 var out = this.proveedores;
@@ -307,35 +314,33 @@ $tf_inline_script = <<<JS
                 }
                 return out;
             },
-            totalPaginas: function () {
+            get totalPaginas() {
                 var t = Math.ceil(this.proveedoresFiltrados.length / this.porPagina);
                 return t < 1 ? 1 : t;
             },
-            proveedoresPagina: function () {
+            get proveedoresPagina() {
                 var ini = (this.paginaActual - 1) * this.porPagina;
                 return this.proveedoresFiltrados.slice(ini, ini + this.porPagina);
             },
-            rangoInicio: function () {
+            get rangoInicio() {
                 if (!this.proveedoresFiltrados.length) return 0;
                 return (this.paginaActual - 1) * this.porPagina + 1;
             },
-            rangoFin: function () {
+            get rangoFin() {
                 var fin = this.paginaActual * this.porPagina;
                 return fin > this.proveedoresFiltrados.length ? this.proveedoresFiltrados.length : fin;
             }
         },
-        watch: {
-            // Si el filtro reduce los resultados por debajo de la pagina actual, ajustamos
-            totalPaginas: function (n) {
-                if (this.paginaActual > n) this.paginaActual = n;
-            }
+        ajustarPagina: function () {
+            if (this.paginaActual > this.totalPaginas) this.paginaActual = this.totalPaginas;
+            if (this.paginaActual < 1) this.paginaActual = 1;
         },
-        methods: {
             obtenerProveedores: function () {
                 var self = this;
                 self.cargando = true;
                 axios.post(url, { accion: 3 }).then(function (response) {
                     self.proveedores = response.data || [];
+                    self.ajustarPagina();
                 }).catch(function (err) {
                     console.error("Error al obtener proveedores:", err);
                     Swal.fire({
@@ -465,6 +470,7 @@ $tf_inline_script = <<<JS
                 });
             },
             guardarProveedor: function (prov, idProveedor, formValues) {
+                var self = this;
                 axios.post(url, { accion: 6, id_prov: idProveedor, formValues: formValues }).then(function () {
                     // Actualizamos in-place el objeto en el array
                     prov.proveedor_nombre = formValues.nombreProv;
@@ -478,6 +484,7 @@ $tf_inline_script = <<<JS
                     prov.proveedor_sucursal = formValues.sucursalProv;
                     prov.proveedor_telefono = formValues.telefonoProv;
                     prov.proveedor_email = formValues.correoProv;
+                    self.ajustarPagina();
                     Swal.fire({
                         toast: true,
                         position: "bottom-start",
@@ -508,6 +515,7 @@ $tf_inline_script = <<<JS
                         // El endpoint solo devuelve los ACTIVO -> sacamos el item de la lista
                         var idx = self.proveedores.indexOf(prov);
                         if (idx > -1) self.proveedores.splice(idx, 1);
+                        self.ajustarPagina();
                         Swal.fire({
                             toast: true,
                             position: "bottom-start",
@@ -521,13 +529,17 @@ $tf_inline_script = <<<JS
                         Swal.fire({ icon: "error", title: "Error", text: "No se pudo desactivar." });
                     });
                 });
+            },
+            init: function () {
+                this.obtenerProveedores();
             }
-        },
-        mounted: function () {
-            this.obtenerProveedores();
         }
-    });
+    }
 JS;
+} // end if(false)
+
+$tf_use_vue = false;
+$tf_extra_head = '<style>[x-cloak]{display:none !important;}</style>';
 
 include __DIR__ . '/../includes/layout_bottom.php';
 ?>

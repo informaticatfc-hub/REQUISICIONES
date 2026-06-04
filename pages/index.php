@@ -14,7 +14,7 @@ $usuario_sesion = $__user['user_nameUser'] ?? ($_SESSION['Usuario'] ?? '');
 $usuario_nombre = $__user['user_name']     ?? $usuario_sesion;
 $usuario_rol    = $__user['role']['name']  ?? 'Residente';
 $usuario_rolCode= $__user['role']['code']  ?? 'residente';
-$usuario_dirAcc = (int)($__user['user_directionAcess'] ?? 0);
+$usuario_dirAcc = tf_user_has_direction_access($__user) ? 1 : 0;
 $usuario_perms  = $__user['permissions']   ?? [];
 
 // ----------------------------------------------------------------
@@ -31,10 +31,17 @@ $tf_user           = [
     'permissions' => $usuario_perms,
 ];
 $tf_show_direccion = in_array($usuario_rolCode, ['admin', 'director'], true) || $usuario_dirAcc === 1;
-$tf_show_admin     = $usuario_rolCode === 'admin';
+$tf_show_admin     = in_array($usuario_rolCode, ['admin', 'desarrollador'], true) || tf_has_permission('admin.users.view', $__user);
 $tf_show_subbar    = true;
 $tf_user_id_js     = (string)$usuario_sesion;
 $tf_es_director    = ($usuario_rolCode === 'director') || ($usuario_dirAcc === 1);
+$tf_is_lector      = ($usuario_rolCode === 'lector');
+$canObras          = tf_has_permission('obras.view', $__user);
+$canRequisiciones  = tf_has_permission('requisiciones.view', $__user);
+$canRequisicionesCreate = tf_has_permission('requisiciones.create', $__user);
+$canCatalogos      = tf_has_permission('catalogos.view', $__user);
+$canPresiones      = tf_has_permission('presiones.view', $__user);
+$canDireccion      = tf_has_permission('direccion.view', $__user) || tf_has_permission('presiones.authorize', $__user) || $tf_show_direccion;
 
 // La sub-bar queda limpia; las acciones ya se concentran en el navbar principal.
 $tf_subbar_extra = '';
@@ -42,7 +49,7 @@ $tf_subbar_extra = '';
 include __DIR__ . '/../includes/layout_top.php';
 ?>
 
-<div id="AppIndex" class="tf-page-inner">
+<div id="AppIndex" class="tf-page-inner" x-data="indexApp()" x-init="init()" x-cloak>
 
     <!-- ============================================================
          Page header
@@ -50,8 +57,12 @@ include __DIR__ . '/../includes/layout_top.php';
     <header class="tf-page-header">
         <div>
             <span class="tf-eyebrow">Panel principal</span>
-            <h1 class="tf-page-title">Bienvenido, <span v-cloak>{{ NameUser || '<?= htmlspecialchars($usuario_nombre) ?>' }}</span></h1>
-            <?php if ($tf_es_director): ?>
+            <h1 class="tf-page-title">Bienvenido, <span x-text="NameUser || '<?= htmlspecialchars($usuario_nombre) ?>'"></span></h1>
+            <?php if ($tf_is_lector): ?>
+            <p class="tf-page-lead">
+                Dashboard de lectura: solo accesos a módulos permitidos para consulta y exportación.
+            </p>
+            <?php elseif ($tf_es_director): ?>
             <p class="tf-page-lead">
                 Centro directivo para autorizacion, cierre de presiones y reportes KPI.
             </p>
@@ -61,20 +72,60 @@ include __DIR__ . '/../includes/layout_top.php';
             </p>
             <?php endif; ?>
         </div>
-        <?php if (!$tf_es_director): ?>
-        <div class="tf-page-header-actions">
-            <a href="./nueva_requisicion.php" class="tf-btn tf-btn-primary">
-                <i class="bi bi-file-earmark-plus"></i> Nueva requisicion
-            </a>
-        </div>
-        <?php endif; ?>
+        
     </header>
 
+    <?php if ($tf_is_lector): ?>
+    <section class="tf-card">
+        <header class="tf-card-header">
+            <div>
+                <h2 class="tf-card-title"><i class="bi bi-compass"></i> Accesos permitidos</h2>
+                <p class="tf-card-sub">Vista simplificada para rol lector</p>
+            </div>
+        </header>
+        <div class="tf-card-body">
+            <div class="tf-module-grid">
+                <?php if ($canObras || $canRequisiciones || $canPresiones): ?>
+                <a href="./obras.php" class="tf-module-card">
+                    <span class="tf-module-icon tf-module-icon-primary">
+                        <i class="bi bi-buildings"></i>
+                    </span>
+                    <span class="tf-module-label">Obras</span>
+                    <span class="tf-module-sub">Consulta requisiciones y presiones de tus obras asignadas.</span>
+                    <span class="tf-module-cta">Abrir <i class="bi bi-arrow-right"></i></span>
+                </a>
+                <?php endif; ?>
+
+                <?php if ($canCatalogos): ?>
+                <a href="./menu_catalago.php" class="tf-module-card">
+                    <span class="tf-module-icon tf-module-icon-success">
+                        <i class="bi bi-collection"></i>
+                    </span>
+                    <span class="tf-module-label">Catálogos</span>
+                    <span class="tf-module-sub">Consulta proveedores y bancos en modo lectura.</span>
+                    <span class="tf-module-cta">Abrir <i class="bi bi-arrow-right"></i></span>
+                </a>
+                <?php endif; ?>
+
+                <?php if ($canDireccion): ?>
+                <a href="./reportes_kpi.php" class="tf-module-card">
+                    <span class="tf-module-icon tf-module-icon-warning">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </span>
+                    <span class="tf-module-label">Reportes KPI</span>
+                    <span class="tf-module-sub">Consulta indicadores globales y exporta reportes.</span>
+                    <span class="tf-module-cta">Abrir <i class="bi bi-arrow-right"></i></span>
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </section>
+    <?php else: ?>
     <!-- ============================================================
          KPI grid
          ============================================================ -->
     <section class="tf-kpi-grid" aria-label="Resumen rapido">
-        <?php if ($tf_es_director): ?>
+        <?php if ($canDireccion): ?>
         <article class="tf-kpi">
             <div class="tf-kpi-head">
                 <span class="tf-kpi-icon tf-kpi-icon-warning">
@@ -85,21 +136,6 @@ include __DIR__ . '/../includes/layout_top.php';
             <div class="tf-kpi-value" style="font-size:1.35rem">Todas las presiones</div>
             <div class="tf-kpi-foot">
                 <a href="./all_presiones.php" class="tf-btn tf-btn-ghost tf-btn-sm">
-                    Abrir <i class="bi bi-arrow-right"></i>
-                </a>
-            </div>
-        </article>
-
-        <article class="tf-kpi">
-            <div class="tf-kpi-head">
-                <span class="tf-kpi-icon tf-kpi-icon-danger">
-                    <i class="bi bi-cash-coin"></i>
-                </span>
-                <span class="tf-kpi-label">Cierre de presiones</span>
-            </div>
-            <div class="tf-kpi-value" style="font-size:1.35rem">Presiones</div>
-            <div class="tf-kpi-foot">
-                <a href="./presiones.php" class="tf-btn tf-btn-ghost tf-btn-sm">
                     Abrir <i class="bi bi-arrow-right"></i>
                 </a>
             </div>
@@ -119,7 +155,9 @@ include __DIR__ . '/../includes/layout_top.php';
                 </a>
             </div>
         </article>
-        <?php else: ?>
+        <?php endif; ?>
+
+        <?php if ($canObras): ?>
         <article class="tf-kpi">
             <div class="tf-kpi-head">
                 <span class="tf-kpi-icon tf-kpi-icon-primary">
@@ -127,28 +165,15 @@ include __DIR__ . '/../includes/layout_top.php';
                 </span>
                 <span class="tf-kpi-label">Obras activas recientes</span>
             </div>
-            <div class="tf-kpi-value" v-cloak>{{ obras.length }}</div>
+            <div class="tf-kpi-value" x-text="obras.length"></div>
             <div class="tf-kpi-foot">
                 <span>Mostrando las 12 mas recientes</span>
             </div>
         </article>
+        <?php endif; ?>
 
+        <?php if ($canDireccion): ?>
         <article class="tf-kpi">
-            <div class="tf-kpi-head">
-                <span class="tf-kpi-icon tf-kpi-icon-success">
-                    <i class="bi bi-collection"></i>
-                </span>
-                <span class="tf-kpi-label">Catalogos</span>
-            </div>
-            <div class="tf-kpi-value" style="font-size:1.35rem">Proveedores y Bancos</div>
-            <div class="tf-kpi-foot">
-                <a href="./menu_catalago.php" @click.prevent="irMenuCatalago" class="tf-btn tf-btn-ghost tf-btn-sm">
-                    Abrir <i class="bi bi-arrow-right"></i>
-                </a>
-            </div>
-        </article>
-
-        <article class="tf-kpi" v-if="users.length && users[0].user_directionAcess == 1" v-cloak>
             <div class="tf-kpi-head">
                 <span class="tf-kpi-icon tf-kpi-icon-warning">
                     <i class="bi bi-briefcase-fill"></i>
@@ -157,27 +182,13 @@ include __DIR__ . '/../includes/layout_top.php';
             </div>
             <div class="tf-kpi-value" style="font-size:1.35rem">Presiones pendientes</div>
             <div class="tf-kpi-foot">
-                <a href="./direccion.php" @click.prevent="irDireecion" class="tf-btn tf-btn-ghost tf-btn-sm">
+                <a href="./direccion.php" x-on:click.prevent="irDireecion" class="tf-btn tf-btn-ghost tf-btn-sm">
                     Autorizar <i class="bi bi-arrow-right"></i>
                 </a>
             </div>
         </article>
-
-        <article class="tf-kpi">
-            <div class="tf-kpi-head">
-                <span class="tf-kpi-icon tf-kpi-icon-danger">
-                    <i class="bi bi-receipt"></i>
-                </span>
-                <span class="tf-kpi-label">Requisiciones</span>
-            </div>
-            <div class="tf-kpi-value" style="font-size:1.35rem">Modulo</div>
-            <div class="tf-kpi-foot">
-                <a href="./requisiciones.php" class="tf-btn tf-btn-ghost tf-btn-sm">
-                    Ver todas <i class="bi bi-arrow-right"></i>
-                </a>
-            </div>
-        </article>
         <?php endif; ?>
+
     </section>
 
     <!-- ============================================================
@@ -185,13 +196,14 @@ include __DIR__ . '/../includes/layout_top.php';
          ============================================================ -->
     <div class="tf-grid-2">
         <!-- Obras -->
+        <?php if ($canObras): ?>
         <section class="tf-card">
             <header class="tf-card-header">
                 <div>
                     <h2 class="tf-card-title">
                         <i class="bi bi-buildings"></i> Obras activas recientes
                     </h2>
-                    <p class="tf-card-sub" v-cloak>{{ obras.length }} obras encontradas</p>
+                    <p class="tf-card-sub"><span x-text="obras.length"></span> obras encontradas</p>
                 </div>
                 <a href="#" class="tf-btn tf-btn-ghost tf-btn-sm">
                     Ver todas <i class="bi bi-arrow-right"></i>
@@ -199,31 +211,34 @@ include __DIR__ . '/../includes/layout_top.php';
             </header>
 
             <div class="tf-card-body p-0">
-                <div v-if="!obras.length" class="tf-empty" v-cloak>
+                <div x-show="!obras.length" class="tf-empty" x-cloak>
                     <i class="bi bi-inbox"></i>
                     <p>No hay obras registradas para mostrar.</p>
                 </div>
 
-                <ul class="tf-list" v-cloak>
-                    <li v-for="obra in obras" :key="obra.obras_id" class="tf-obra-row">
+                <ul class="tf-list" x-cloak>
+                    <template x-for="obra in obras" :key="obra.obras_id">
+                    <li class="tf-obra-row">
                         <div class="tf-obra-row-main">
                             <span class="tf-obra-row-icon">
                                 <i class="bi bi-building"></i>
                             </span>
                             <div class="tf-obra-row-text">
-                                <strong>{{ obra.obras_nombre }}</strong>
+                                <strong x-text="obra.obras_nombre"></strong>
                                 <small>Obra activa</small>
                             </div>
                         </div>
                         <button type="button"
                                 class="tf-btn tf-btn-primary tf-btn-sm"
-                                @click="irObra(obra.obras_id)">
+                                x-on:click="irObra(obra.obras_id)">
                             <i class="bi bi-box-arrow-up-right"></i> Abrir
                         </button>
                     </li>
+                    </template>
                 </ul>
             </div>
         </section>
+        <?php endif; ?>
 
         <!-- Panel lateral: acciones rapidas -->
         <aside class="tf-side-col">
@@ -235,38 +250,15 @@ include __DIR__ . '/../includes/layout_top.php';
                 </header>
                 <div class="tf-card-body">
                     <div class="tf-quick-grid">
-                        <?php if ($tf_es_director): ?>
+                        <?php if ($canDireccion): ?>
                         <a href="./all_presiones.php" class="tf-quick-btn">
                             <i class="bi bi-briefcase-fill"></i>
                             <span>Autorizacion</span>
-                        </a>
-                        <a href="./presiones.php" class="tf-quick-btn">
-                            <i class="bi bi-cash-coin"></i>
-                            <span>Cierre Presiones</span>
                         </a>
                         <a href="./reportes_kpi.php" class="tf-quick-btn">
                             <i class="bi bi-graph-up-arrow"></i>
                             <span>Reportes KPI</span>
                         </a>
-                        <?php else: ?>
-                        <a href="./nueva_requisicion.php" class="tf-quick-btn">
-                            <i class="bi bi-file-earmark-plus"></i>
-                            <span>Nueva requisicion</span>
-                        </a>
-                        <a href="./menu_catalago.php" class="tf-quick-btn" @click.prevent="irMenuCatalago">
-                            <i class="bi bi-collection"></i>
-                            <span>Catalogos</span>
-                        </a>
-                        <a href="./presiones.php" class="tf-quick-btn">
-                            <i class="bi bi-cash-coin"></i>
-                            <span>Presiones</span>
-                        </a>
-                        <?php if ($tf_show_direccion): ?>
-                        <a href="./direccion.php" class="tf-quick-btn" @click.prevent="irDireecion">
-                            <i class="bi bi-briefcase-fill"></i>
-                            <span>Direccion</span>
-                        </a>
-                        <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -274,6 +266,7 @@ include __DIR__ . '/../includes/layout_top.php';
 
         </aside>
     </div>
+    <?php endif; ?>
 
 </div>
 
@@ -284,14 +277,11 @@ $tf_inline_script = <<<JS
     var url  = "../api/crud_index.php";
     var url2 = ".";
 
-    new Vue({
-        el: "#AppIndex",
-        data: {
+    function indexApp() {
+        return {
             users: [],
             obras: [],
-            NameUser: (window.TF_CONTEXT && window.TF_CONTEXT.user && window.TF_CONTEXT.user.name) || ""
-        },
-        methods: {
+            NameUser: (window.TF_CONTEXT && window.TF_CONTEXT.user && window.TF_CONTEXT.user.name) || "",
             consultarUsuario: function () {
                 axios.post(url, { accion: 1 }).then(function (response) {
                     this.users = response.data || [];
@@ -311,6 +301,7 @@ $tf_inline_script = <<<JS
             },
             irObra: function (idObra) {
                 try { sessionStorage.setItem("obraActiva", String(idObra)); } catch (e) {}
+                try { localStorage.setItem("obraActiva", String(idObra)); } catch (e) {}
                 window.location.href = url2 + "/obras.php?obra=" + encodeURIComponent(idObra);
             },
             irDireecion: function () {
@@ -318,14 +309,18 @@ $tf_inline_script = <<<JS
             },
             irMenuCatalago: function () {
                 window.location.href = url2 + "/menu_catalago.php";
+            },
+            init: function () {
+                this.listarObras();
+                this.consultarUsuario();
             }
-        },
-        created: function () {
-            this.listarObras();
-            this.consultarUsuario();
         }
-    });
+    }
 JS;
+
+$tf_use_vue = false;
+$tf_extra_head = '<style>[x-cloak]{display:none !important;}</style>';
+$tf_extra_scripts = '<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>';
 
 include __DIR__ . '/../includes/layout_bottom.php';
 ?>

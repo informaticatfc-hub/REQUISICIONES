@@ -37,6 +37,29 @@ $tf_show_subbar    = $tf_show_subbar    ?? true;
 $tf_role_code      = strtolower((string)($tf_user['roleCode'] ?? ''));
 $tf_is_director    = in_array($tf_role_code, ['director', 'direccion'], true);
 
+// Permisos de navegacion basados en RBAC
+$_tf_perms      = (array)($tf_user['permissions'] ?? []);
+$_tf_has_all    = in_array('*', $_tf_perms, true);
+$tf_can_obras         = $_tf_has_all || in_array('obras.view', $_tf_perms, true);
+$tf_can_requisiciones = false;
+$tf_can_presiones     = false;
+$tf_can_catalogos     = $_tf_has_all || in_array('catalogos.view', $_tf_perms, true);
+$tf_can_nueva_requisicion = false;
+$tf_can_manage_proveedores = $_tf_has_all || in_array('proveedores.manage', $_tf_perms, true);
+$tf_can_manage_bancos = $_tf_has_all || in_array('bancos.manage', $_tf_perms, true);
+$tf_can_direccion     = $_tf_has_all
+    || in_array('direccion.view', $_tf_perms, true)
+    || in_array('presiones.authorize', $_tf_perms, true)
+    || in_array($tf_role_code, ['director', 'direccion'], true);
+$tf_can_admin         = $_tf_has_all
+    || in_array('admin.users.view', $_tf_perms, true)
+    || in_array('admin.roles.manage', $_tf_perms, true)
+    || in_array($tf_role_code, ['admin', 'desarrollador'], true);
+
+// Mantiene compatibilidad con callers legacy, pero privilegia permisos.
+$tf_show_direccion = $tf_show_direccion || $tf_can_direccion;
+$tf_show_admin     = $tf_show_admin || $tf_can_admin;
+
 // Sanitiza iniciales
 if (empty($tf_user['initials']) && !empty($tf_user['name'])) {
     $parts = preg_split('/\s+/', trim($tf_user['name']));
@@ -78,7 +101,7 @@ function tf_active($current, $key) {
     <link rel="stylesheet" href="../assets/lib/sweetalert/sweetalert2.min.css">
 
     <!-- Diseno v4 -->
-    <link rel="stylesheet" href="../assets/css/v4.css">
+    <link rel="stylesheet" href="../assets/css/v4.css?v=fase08q">
 
     <?php if (!empty($tf_extra_head)) echo $tf_extra_head; ?>
 </head>
@@ -104,7 +127,7 @@ function tf_active($current, $key) {
                     <i class="bi bi-grid-1x2-fill"></i> Inicio
                 </a>
 
-                <?php if (!$tf_is_director): ?>
+                <?php if ($tf_can_obras): ?>
                 <div class="dropdown">
                     <button type="button"
                             class="tf-nav-trigger <?= tf_active($tf_active_nav, 'obras') ?>"
@@ -128,19 +151,25 @@ function tf_active($current, $key) {
                 </div>
                 <?php endif; ?>
 
-                <?php if (!$tf_is_director): ?>
-                <a href="./requisiciones.php"
-                   class="<?= tf_active($tf_active_nav, 'requisiciones') ?>">
+                <?php if ($tf_can_requisiciones): ?>
+                <a href="javascript:void(0)"
+                   onclick="TfNav.goToWithObra('./requisiciones.php', event)"
+                         class="<?= tf_active($tf_active_nav, 'requisiciones') ?> tf-link-requires-obra"
+                         data-requires-obra="1">
                     <i class="bi bi-receipt"></i> Requisiciones
                 </a>
                 <?php endif; ?>
 
-                <a href="./presiones.php"
-                   class="<?= tf_active($tf_active_nav, 'presiones') ?>">
+                <?php if ($tf_can_presiones): ?>
+                <a href="<?= $tf_is_director ? './presiones.php' : 'javascript:void(0)' ?>"
+                   <?= !$tf_is_director ? 'onclick="TfNav.goToWithObra(\'./presiones.php\', event)"' : '' ?>
+                         class="<?= tf_active($tf_active_nav, 'presiones') ?> tf-link-requires-obra"
+                         data-requires-obra="1">
                     <i class="bi bi-cash-coin"></i> Presiones
                 </a>
+                <?php endif; ?>
 
-                <?php if (!$tf_is_director): ?>
+                <?php if ($tf_can_catalogos): ?>
                 <div class="dropdown">
                     <button type="button"
                             class="tf-nav-trigger <?= tf_active($tf_active_nav, 'catalogos') ?>"
@@ -176,6 +205,16 @@ function tf_active($current, $key) {
             </nav>
 
             <div class="tf-topbar-actions">
+                <!-- D-M6: Notification bell (badge actualizado cada 60 s por TfNotif) -->
+                <button class="tf-icon-btn tf-notif-btn" id="tfNotifBtn" type="button"
+                        title="Notificaciones" aria-label="Notificaciones"
+                        style="position:relative;display:none">
+                    <i class="bi bi-bell-fill"></i>
+                    <span id="tfNotifBadge"
+                          style="position:absolute;top:2px;right:2px;min-width:16px;height:16px;
+                                 padding:0 4px;border-radius:8px;font-size:.6rem;font-weight:700;
+                                 line-height:16px;background:#ef4444;color:#fff;display:none"></span>
+                </button>
                 <button class="tf-icon-btn" id="tfThemeToggle" type="button"
                         title="Cambiar tema" aria-label="Cambiar tema">
                     <i class="bi bi-moon-stars-fill"></i>
@@ -258,19 +297,25 @@ function tf_active($current, $key) {
             <a href="./index.php" class="tf-mobile-nav-item <?= tf_active($tf_active_nav, 'inicio') ?>">
                 <i class="bi bi-grid-1x2-fill"></i> Inicio
             </a>
-            <?php if (!$tf_is_director): ?>
-            <a href="#" class="tf-mobile-nav-item <?= tf_active($tf_active_nav, 'obras') ?>">
+            <?php if ($tf_can_obras): ?>
+            <a href="javascript:void(0)" onclick="TfNav.goToWithObra('./obras.php', event)" class="tf-mobile-nav-item <?= tf_active($tf_active_nav, 'obras') ?>">
                 <i class="bi bi-building"></i> Obras
             </a>
-            <a href="./requisiciones.php" class="tf-mobile-nav-item <?= tf_active($tf_active_nav, 'requisiciones') ?>">
+            <?php endif; ?>
+            <?php if ($tf_can_requisiciones): ?>
+            <a href="javascript:void(0)" onclick="TfNav.goToWithObra('./requisiciones.php', event)" class="tf-mobile-nav-item <?= tf_active($tf_active_nav, 'requisiciones') ?> tf-link-requires-obra" data-requires-obra="1">
                 <i class="bi bi-receipt"></i> Requisiciones
             </a>
             <?php endif; ?>
-            <a href="./presiones.php" class="tf-mobile-nav-item <?= tf_active($tf_active_nav, 'presiones') ?>">
+            <?php if ($tf_can_presiones): ?>
+            <a href="<?= $tf_is_director ? './presiones.php' : 'javascript:void(0)' ?>"
+               <?= !$tf_is_director ? 'onclick="TfNav.goToWithObra(\'./presiones.php\', event)"' : '' ?>
+               class="tf-mobile-nav-item <?= tf_active($tf_active_nav, 'presiones') ?> tf-link-requires-obra" data-requires-obra="1">
                 <i class="bi bi-cash-coin"></i> Presiones
             </a>
+            <?php endif; ?>
 
-            <?php if (!$tf_is_director): ?>
+            <?php if ($tf_can_catalogos): ?>
             <div class="tf-mobile-nav-section">Catalogos</div>
             <a href="./proveedores.php" class="tf-mobile-nav-item">
                 <i class="bi bi-truck"></i> Proveedores
@@ -327,6 +372,7 @@ function tf_active($current, $key) {
             </div>
             <div class="tf-cmd-list" id="tfCmdList">
                 <div class="tf-cmd-section">Acciones rapidas</div>
+                <?php if ($tf_can_nueva_requisicion): ?>
                 <a class="tf-cmd-item active" href="./nueva_requisicion.php">
                     <i class="bi bi-file-earmark-plus"></i>
                     <div class="tf-cmd-item-text">
@@ -334,6 +380,8 @@ function tf_active($current, $key) {
                         <small>Solicitud de compra</small>
                     </div>
                 </a>
+                <?php endif; ?>
+                <?php if ($tf_can_manage_proveedores || $tf_can_catalogos): ?>
                 <a class="tf-cmd-item" href="./agregar_proveedor.php">
                     <i class="bi bi-truck"></i>
                     <div class="tf-cmd-item-text">
@@ -341,22 +389,28 @@ function tf_active($current, $key) {
                         <small>Catalogo</small>
                     </div>
                 </a>
+                <?php endif; ?>
 
                 <div class="tf-cmd-section">Navegacion</div>
-                <a class="tf-cmd-item" href="./requisiciones.php">
+                <?php if ($tf_can_requisiciones): ?>
+                <a class="tf-cmd-item tf-link-requires-obra" href="./requisiciones.php" data-requires-obra="1">
                     <i class="bi bi-receipt"></i>
                     <div class="tf-cmd-item-text">
                         <strong>Requisiciones</strong>
                         <small>Modulo</small>
                     </div>
                 </a>
-                <a class="tf-cmd-item" href="./presiones.php">
+                <?php endif; ?>
+                <?php if ($tf_can_presiones): ?>
+                <a class="tf-cmd-item tf-link-requires-obra" href="./presiones.php" data-requires-obra="1">
                     <i class="bi bi-cash-coin"></i>
                     <div class="tf-cmd-item-text">
                         <strong>Presiones de pago</strong>
                         <small>Modulo</small>
                     </div>
                 </a>
+                <?php endif; ?>
+                <?php if ($tf_can_catalogos): ?>
                 <a class="tf-cmd-item" href="./menu_catalago.php">
                     <i class="bi bi-collection"></i>
                     <div class="tf-cmd-item-text">
@@ -364,6 +418,25 @@ function tf_active($current, $key) {
                         <small>Proveedores, Bancos</small>
                     </div>
                 </a>
+                <?php endif; ?>
+                <?php if ($tf_show_direccion): ?>
+                <a class="tf-cmd-item" href="./direccion.php">
+                    <i class="bi bi-briefcase-fill"></i>
+                    <div class="tf-cmd-item-text">
+                        <strong>Direccion</strong>
+                        <small>Autorizaciones</small>
+                    </div>
+                </a>
+                <?php endif; ?>
+                <?php if ($tf_show_admin): ?>
+                <a class="tf-cmd-item" href="./admin.php">
+                    <i class="bi bi-shield-lock-fill"></i>
+                    <div class="tf-cmd-item-text">
+                        <strong>Administracion</strong>
+                        <small>Usuarios y permisos</small>
+                    </div>
+                </a>
+                <?php endif; ?>
             </div>
         </div>
     </div>

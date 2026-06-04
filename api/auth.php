@@ -54,11 +54,18 @@ function api_get_current_user(PDO $conexion)
 /**
  * Compat legacy: validar acceso a Direccion.
  */
-function api_require_direction_access($user)
+function api_require_direction_access($user, ?PDO $conexion = null)
 {
     $code = $user['role']['code'] ?? '';
     $hasFlag = (int)($user['user_directionAcess'] ?? 0) === 1;
     if ($code !== 'admin' && $code !== 'director' && !$hasFlag) {
+        if ($conexion instanceof PDO) {
+            tf_audit_log($conexion, 'access.denied', 'rbac', null, [
+                'reason' => 'direction_access_required',
+                'user_role' => (string)$code,
+                'uri' => $_SERVER['REQUEST_URI'] ?? null,
+            ]);
+        }
         api_json_error('No tienes permisos para esta accion', 403);
     }
 }
@@ -86,7 +93,7 @@ function api_require_role(PDO $conexion, $codes)
  * Si el body trae _csrf o el header X-CSRF-Token, lo valida.
  * Para acciones GET-only no es necesario llamarlo.
  */
-function api_require_csrf($payload = null)
+function api_require_csrf($payload = null, ?PDO $conexion = null)
 {
-    tf_csrf_validate($payload);
+    tf_csrf_validate($payload, $conexion);
 }

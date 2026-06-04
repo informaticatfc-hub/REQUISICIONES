@@ -1,10 +1,9 @@
 var url = "../api/crud_items_requisiciones.php";
 var url2 = ".";
 
-const appRequesition = new Vue({
-    el: "#AppItems",
-    // Se define la estructura de datos para la aplicación
-    data: {
+function itemRequisicionApp() {
+    return {
+        // Se define la estructura de datos para la aplicación
         // Lista de items de la hoja
         itemsHoja: [],
         // Información de la hoja
@@ -53,9 +52,64 @@ const appRequesition = new Vue({
         clve: "",
         // Número de la requisición
         Numero_Req: "",
-        validate: ""
-    },
-    methods: {
+        validate: "",
+        users: [],
+        canReqEdit: !!(window.TF_LEGACY_PERMS && window.TF_LEGACY_PERMS.canReqEdit),
+        canDireccion: !!(window.TF_LEGACY_PERMS && window.TF_LEGACY_PERMS.canDireccion)
+    ,
+        get hojaActiva() {
+            return this.hojas[0] || {};
+        },
+        get isEditableSheet() {
+            var st = this.hojaActiva.hojaRequisicion_estatus;
+            return this.canReqEdit && (st === 'NUEVO' || st === 'PENDIENTE' || st === 'RECHAZADA');
+        },
+        initDataTable: function () {
+            if (!(window.$ && $.fn && $.fn.DataTable)) return;
+            if ($.fn.DataTable.isDataTable('#example')) {
+                $('#example').DataTable().destroy();
+            }
+            $('#example').DataTable({
+                "searching": true,
+                "paging": true,
+                "order": [],
+                "responsive": true,
+                "autoWidth": false,
+                "language": {
+                    "sProcessing": "Procesando...",
+                    "sLengthMenu": "Mostrar _MENU_ registros",
+                    "sZeroRecords": "No se encontraron resultados",
+                    "sEmptyTable": "Ningún dato disponible en esta tabla",
+                    "sInfo": "Mostrando registros del _START_ al _END_ de un total de _TOTAL_ registros",
+                    "sInfoEmpty": "Mostrando registros del 0 al 0 de un total de 0 registros",
+                    "sInfoFiltered": "(filtrado de un total de _MAX_ registros)",
+                    "sInfoPostFix": "",
+                    "sSearch": "Buscar:",
+                    "sUrl": "",
+                    "sInfoThousands": ",",
+                    "sLoadingRecords": "Cargando...",
+                    "oPaginate": {
+                        "sFirst": "Primero",
+                        "sLast": "Último",
+                        "sNext": "Siguiente",
+                        "sPrevious": "Anterior"
+                    },
+                    "oAria": {
+                        "sSortAscending": ": Activar para ordenar la columna de manera ascendente",
+                        "sSortDescending": ": Activar para ordenar la columna de manera descendente"
+                    }
+                }
+            });
+        },
+        round2: function (value) {
+            var n = Number(value);
+            if (!isFinite(n)) return 0;
+            return Math.round((n + Number.EPSILON) * 100) / 100;
+        },
+        toNumber: function (value) {
+            var n = Number(value);
+            return isFinite(n) ? n : 0;
+        },
         /**
              * Función para listar los items de una hoja específica.
              * 
@@ -81,6 +135,9 @@ const appRequesition = new Vue({
                  */
                 this.itemsHoja = response.data;
                 console.log(this.itemsHoja);
+                this.$nextTick(() => {
+                    this.initDataTable();
+                });
             });
         },
         /**
@@ -380,7 +437,9 @@ const appRequesition = new Vue({
         */
         actualizarDatos: function (IVAEdit, banderaFlete, banderaFisica, banderaResico, banderaISR) {
             // Auxiliar para calcular el valor del item
-            var aux = this.cantidad * this.precio;
+            var cantidadNum = this.toNumber(this.cantidad);
+            var precioNum = this.toNumber(this.precio);
+            var aux = this.round2(cantidadNum * precioNum);
             // Auxiliar para calcular el valor de la retención por flete
             var auxFlete = 0;
             // Auxiliar para calcular el valor de la retención por renta persona física
@@ -397,19 +456,19 @@ const appRequesition = new Vue({
             if (IVAEdit > 0) {
                 // Calcula los valores de las retenciones y el IVA
                 if (banderaFlete == true) {
-                    auxFlete = aux * 0.04
+                    auxFlete = this.round2(aux * 0.04);
                 }
                 if (banderaFisica == true) {
-                    auxFisico = aux * 0.106667;
+                    auxFisico = this.round2(aux * 0.106667);
                 }
                 if (banderaResico == true) {
-                    auxResico = aux * 0.0125;
+                    auxResico = this.round2(aux * 0.0125);
                 }
                 if (banderaISR == true) {
-                    auxISR = aux * 0.1;
+                    auxISR = this.round2(aux * 0.1);
                 }
-                auxIVA = aux * 0.16;
-                auxRet = auxFisico + auxFlete + auxResico + auxISR;
+                auxIVA = this.round2(aux * 0.16);
+                auxRet = this.round2(auxFisico + auxFlete + auxResico + auxISR);
             }
             // Registra los datos en la base de datos utilizando axios
             axios.post(url, {
@@ -431,9 +490,9 @@ const appRequesition = new Vue({
                 banderaResico: banderaResico,
                 banderaISR: banderaISR,
                 // Precio unitario del item
-                precio: this.precio,
+                precio: this.round2(precioNum),
                 // Cantidad del item
-                cantidad: this.cantidad,
+                cantidad: this.round2(cantidadNum),
                 // Valor total del item
                 total: this.AuxTotal,
                 // ID del item
@@ -766,7 +825,9 @@ const appRequesition = new Vue({
         */
         addItem: function () {
             // Calcula el valor total del item
-            var aux = this.cantidad * this.precio;
+            var cantidadNum = this.toNumber(this.cantidad);
+            var precioNum = this.toNumber(this.precio);
+            var aux = this.round2(cantidadNum * precioNum);
 
             // Inicializa variables para calcular las retenciones y el IVA
             var auxFlete = 0;
@@ -780,19 +841,24 @@ const appRequesition = new Vue({
             if (this.hojas[0].hojaRequisicion_formaPago == "Transferencia") {
                 // Calcula las retenciones y el IVA para pago por transferencia
                 if (this.bandFlete == true) {
-                    auxFlete = aux * 0.04; // Retención por flete (4%)
+                    auxFlete = this.round2(aux * 0.04); // Retención por flete (4%)
                 }
                 if (this.bandeFisica == true) {
-                    auxFisico = aux * 0.106667; // Retención por renta persona física (10.67%)
+                    auxFisico = this.round2(aux * 0.106667); // Retención por renta persona física (10.67%)
                 }
                 if (this.bandResico == true) {
-                    auxResico = aux * 0.0125; // Retención por RESICO (1.25%)
+                    auxResico = this.round2(aux * 0.0125); // Retención por RESICO (1.25%)
                 }
                 if (this.bandISR == true) {
-                    auxISR = aux * 0.1; // Retención por ISR (10%)
+                    auxISR = this.round2(aux * 0.1); // Retención por ISR (10%)
                 }
-                auxIVA = aux * 0.16; // IVA (16%)
-                auxRet = auxFisico + auxFlete + auxResico + auxISR; // Total de retenciones 
+                auxIVA = this.round2(aux * 0.16); // IVA (16%)
+                auxRet = this.round2(auxFisico + auxFlete + auxResico + auxISR); // Total de retenciones 
+            } else {
+                this.bandFlete = false;
+                this.bandeFisica = false;
+                this.bandResico = false;
+                this.bandISR = false;
             }
 
             // Envía la solicitud al servidor para agregar el item a la base de datos
@@ -806,13 +872,14 @@ const appRequesition = new Vue({
                 banderaFisica: this.bandeFisica, // Indica si el item tiene retención por renta persona física
                 banderaResico: this.bandResico, // Indica si el item tiene retención por RESICO
                 banderaISR: this.bandISR, // Indica si el item tiene retención por ISR
-                precio: this.precio, // Precio unitario del item
-                cantidad: this.cantidad, // Cantidad del item
+                precio: this.round2(precioNum), // Precio unitario del item
+                cantidad: this.round2(cantidadNum), // Cantidad del item
                 total: this.AuxTotal, // Valor total del item
                 id_Hoja: this.hojas[0].hojaRequisicion_id // ID de la hoja de requisición
             }).then(response => {
                 this.agregarInformacionHoja(localStorage.getItem("idHoja"));
                 this.listarItems(localStorage.getItem("idHoja"));
+                this.vaciarChecks();
                 console.log(response.data); // Muestra la respuesta del servidor en la consola
             });
         },
@@ -1317,12 +1384,14 @@ const appRequesition = new Vue({
             // Retornar el número si es válido, de lo contrario retornar null
             return isNaN(numero) ? null : numero;
         }
-    },
-    /**
-         * Función que se ejecuta cuando se crea el componente.
-         * Inicializa la tabla de datos y realiza varias peticiones a la base de datos para obtener información.
-    */
-    mounted: async function () {
+        ,
+        /**
+            * Función que se ejecuta cuando se crea el componente.
+            * Inicializa la tabla de datos y realiza varias peticiones a la base de datos para obtener información.
+        */
+        init: async function () {
+        this.canReqEdit = !!(window.TF_LEGACY_PERMS && window.TF_LEGACY_PERMS.canReqEdit);
+        this.canDireccion = !!(window.TF_LEGACY_PERMS && window.TF_LEGACY_PERMS.canDireccion);
         /**
          * Realiza varias peticiones a la base de datos para obtener información.
          * Las peticiones incluyen la lista de obras, la información de la requisición y la información de la obra.
@@ -1338,46 +1407,9 @@ const appRequesition = new Vue({
         this.agregarInformacionHoja(hojaId);
         this.listarItems(hojaId);
         this.validate = localStorage.getItem("validate");
-        /**
-         * Inicializa la tabla de datos con la configuración especificada.
-         * La configuración incluye el idioma y las opciones de paginación.
-         */
-        this.$nextTick(() => {
-            $('#example').DataTable({
-                "searching": true,
-                "paging": true,
-                "order": [], // No ordenar la tabla por defecto
-                "language": { // Configuración del idioma
-                    "sProcessing": "Procesando...", // Mensaje de procesamiento
-                    "sLengthMenu": "Mostrar _MENU_ registros", // Menú de longitud
-                    "sZeroRecords": "No se encontraron resultados", // Mensaje de cero registros
-                    "sEmptyTable": "Ningún dato disponible en esta tabla", // Mensaje de tabla vacía
-                    "sInfo": "Mostrando registros del _START_ al _END_ de un total de _TOTAL_ registros", // Información de registros
-                    "sInfoEmpty": "Mostrando registros del 0 al 0 de un total de 0 registros", // Información de registros vacía
-                    "sInfoFiltered": "(filtrado de un total de _MAX_ registros)", // Información de registros filtrados
-                    "sInfoPostFix": "", // Postfijo de información
-                    "sSearch": "Buscar:", // Etiqueta de búsqueda
-                    "sUrl": "", // URL de la tabla
-                    "sInfoThousands": ",", // Separador de miles
-                    "sLoadingRecords": "Cargando...", // Mensaje de carga
-                    "oPaginate": { // Configuración de paginación
-                        "sFirst": "Primero", // Etiqueta de primer página
-                        "sLast": "Último", // Etiqueta de última página
-                        "sNext": "Siguiente", // Etiqueta de página siguiente
-                        "sPrevious": "Anterior" // Etiqueta de página anterior
-                    },
-                    "oAria": { // Configuración de accesibilidad
-                        "sSortAscending": ": Activar para ordenar la columna de manera ascendente", // Etiqueta de orden ascendente
-                        "sSortDescending": ": Activar para ordenar la columna de manera descendente" // Etiqueta de orden descendente
-                    }
-                }
-            });
-        });
-    },
-    computed: {
-
     }
-});
+};
+}
 
 function generarOpcionesProveedores(lista) {
     return lista.map(prov =>

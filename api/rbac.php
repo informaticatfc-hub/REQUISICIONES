@@ -74,10 +74,17 @@ if (!defined('TF_RBAC_LOADED')) {
      *   - $_POST['_csrf']  (body JSON o form)
      * Aborta con 403 si no coincide.
      */
-    function tf_csrf_validate($payload = null) {
+    function tf_csrf_validate($payload = null, ?PDO $pdo = null) {
         tf_session_start();
         $expected = $_SESSION['_tf_csrf'] ?? '';
         if ($expected === '') {
+            if ($pdo instanceof PDO) {
+                tf_audit_log($pdo, 'csrf.denied', 'security', null, [
+                    'reason' => 'session_token_missing',
+                    'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+                    'uri'    => $_SERVER['REQUEST_URI'] ?? null,
+                ]);
+            }
             tf_abort(403, 'CSRF token ausente en sesion');
         }
         $given = '';
@@ -89,6 +96,16 @@ if (!defined('TF_RBAC_LOADED')) {
             $given = (string)$_POST['_csrf'];
         }
         if (!hash_equals($expected, $given)) {
+            if ($pdo instanceof PDO) {
+                tf_audit_log($pdo, 'csrf.denied', 'security', null, [
+                    'reason'       => 'token_mismatch',
+                    'method'       => $_SERVER['REQUEST_METHOD'] ?? null,
+                    'uri'          => $_SERVER['REQUEST_URI'] ?? null,
+                    'has_header'   => !empty($_SERVER['HTTP_X_CSRF_TOKEN']),
+                    'has_payload'  => is_array($payload) && array_key_exists('_csrf', $payload),
+                    'has_post'     => isset($_POST['_csrf']),
+                ]);
+            }
             tf_abort(403, 'CSRF token invalido');
         }
     }
@@ -197,27 +214,41 @@ if (!defined('TF_RBAC_LOADED')) {
         } elseif (!$user['role']) {
             $user['role'] = ['code' => 'residente', 'name' => 'Residente', 'level' => 40];
             $user['permissions'] = ['obras.view', 'requisiciones.view', 'requisiciones.create',
-                                    'requisiciones.edit', 'catalogos.view'];
+                                    'requisiciones.edit', 'catalogos.view',
+                                    'presiones.view', 'proveedores.view'];
         }
 
         $cached = $user;
         return $cached;
     }
 
-    function tf_user_can_view_all_obras(array $user = null) {
+    function tf_user_can_view_all_obras(?array $user = null) {
         if ($user === null) {
             return false;
         }
 
-        $roleCode = $user['role']['code'] ?? '';
-        if (in_array($roleCode, ['admin', 'director'], true)) {
+        return tf_user_has_direction_access($user)
+            || in_array(($user['role']['code'] ?? ''), ['admin'], true);
+    }
+
+    function tf_user_has_direction_access(?array $user = null) {
+        if ($user === null) {
+            return false;
+        }
+
+        $roleCode = (string)($user['role']['code'] ?? '');
+        if (in_array($roleCode, ['admin', 'director', 'desarrollador'], true)) {
+            return true;
+        }
+
+        if (tf_has_permission('direccion.view', $user) || tf_has_permission('presiones.authorize', $user)) {
             return true;
         }
 
         return (int)($user['user_directionAcess'] ?? 0) === 1;
     }
 
-    function tf_user_assigned_obra_id(array $user = null) {
+    function tf_user_assigned_obra_id(?array $user = null) {
         if ($user === null) {
             return null;
         }
@@ -228,6 +259,44 @@ if (!defined('TF_RBAC_LOADED')) {
         ));
 
         return $obraId === false ? null : (int)$obraId;
+    }
+
+    /**
+     * Retorna array de IDs de obras asignadas al usuario.
+     * Si user_obras pivot existe, la usa; si no, fallback a user_obra_id.
+     * Retorna null para usuarios sin restricción (admin/director).
+     */
+    function tf_user_assigned_obra_ids(PDO $pdo, ?array $user = null) {
+        $user = $user ?? tf_current_user($pdo);
+
+        if (tf_user_can_view_all_obras($user)) {
+            return null; // sin restricción
+        }
+
+        static $pivotExists = null;
+        if ($pivotExists === null) {
+            try {
+                $r = $pdo->query("SHOW TABLES LIKE 'user_obras'")->fetchAll();
+                $pivotExists = !empty($r);
+            } catch (Exception $e) {
+                $pivotExists = false;
+            }
+        }
+
+        if ($pivotExists && !empty($user['user_id'])) {
+            $stmt = $pdo->prepare(
+                "SELECT `obras_id` FROM `user_obras` WHERE `user_id` = ?"
+            );
+            $stmt->execute([(int)$user['user_id']]);
+            $ids = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+            if (!empty($ids)) {
+                return array_map('intval', $ids);
+            }
+        }
+
+        // Fallback: columna legacy
+        $legacyId = tf_user_assigned_obra_id($user);
+        return $legacyId !== null ? [$legacyId] : [];
     }
 
     function tf_require_obra_access(PDO $pdo, $obraId, $user = null) {
@@ -244,39 +313,54 @@ if (!defined('TF_RBAC_LOADED')) {
             return (int)$obraId;
         }
 
-        $assignedObraId = tf_user_assigned_obra_id($user);
-        if ($assignedObraId === null) {
-            tf_abort(403, 'No tienes una obra asignada');
+        $ids = tf_user_assigned_obra_ids($pdo, $user);
+        if (empty($ids)) {
+            tf_audit_log($pdo, 'access.denied', 'rbac', null, [
+                'reason'             => 'no_assigned_obras',
+                'required_check'     => 'obra_scope',
+                'requested_obra_id'  => (int)$obraId,
+                'user_id'            => (int)($user['user_id'] ?? 0),
+                'uri'                => $_SERVER['REQUEST_URI'] ?? null,
+            ]);
+            tf_abort(403, 'No tienes ninguna obra asignada');
         }
 
-        if ((int)$obraId !== (int)$assignedObraId) {
+        if (!in_array((int)$obraId, $ids, true)) {
+            tf_audit_log($pdo, 'access.denied', 'rbac', null, [
+                'reason'             => 'obra_not_assigned',
+                'required_check'     => 'obra_scope',
+                'requested_obra_id'  => (int)$obraId,
+                'assigned_obras'     => array_values(array_map('intval', $ids)),
+                'user_id'            => (int)($user['user_id'] ?? 0),
+                'uri'                => $_SERVER['REQUEST_URI'] ?? null,
+            ]);
             tf_abort(403, 'No tienes acceso a esta obra');
         }
 
         return (int)$obraId;
     }
 
-    function tf_scope_obras_query(PDO $pdo, array $user = null) {
+    function tf_scope_obras_query(PDO $pdo, ?array $user = null) {
         $user = $user ?? tf_current_user($pdo);
 
         if (tf_user_can_view_all_obras($user)) {
-            return array(
-                'sql' => '',
-                'params' => array(),
-            );
+            return array('sql' => '', 'params' => array());
         }
 
-        $assignedObraId = tf_user_assigned_obra_id($user);
-        if ($assignedObraId === null) {
-            return array(
-                'sql' => ' AND 1 = 0',
-                'params' => array(),
-            );
+        $ids = tf_user_assigned_obra_ids($pdo, $user);
+
+        if (empty($ids)) {
+            return array('sql' => ' AND 1 = 0', 'params' => array());
         }
 
+        if (count($ids) === 1) {
+            return array('sql' => ' AND `obras_id` = ?', 'params' => [$ids[0]]);
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
         return array(
-            'sql' => ' AND `obras_id` = ?',
-            'params' => array($assignedObraId),
+            'sql'    => ' AND `obras_id` IN (' . $placeholders . ')',
+            'params' => $ids,
         );
     }
 
@@ -307,16 +391,53 @@ if (!defined('TF_RBAC_LOADED')) {
     function tf_require_permission(PDO $pdo, $code) {
         $user = tf_current_user($pdo);
         if (!tf_has_permission($code, $user)) {
+            tf_audit_log($pdo, 'access.denied', 'rbac', null, [
+                'required_permission' => $code,
+                'uri' => $_SERVER['REQUEST_URI'] ?? null,
+            ]);
             tf_abort(403, "No tienes permiso para: $code");
         }
         return $user;
     }
 
+    function tf_require_any_permission(PDO $pdo, array $codes, $message = 'Permiso insuficiente para esta accion') {
+        $user = tf_current_user($pdo);
+        foreach ($codes as $code) {
+            if (tf_has_permission($code, $user)) {
+                return $user;
+            }
+        }
+
+        tf_audit_log($pdo, 'access.denied', 'rbac', null, [
+            'required_permissions' => array_values($codes),
+            'uri' => $_SERVER['REQUEST_URI'] ?? null,
+        ]);
+        tf_abort(403, $message);
+    }
+
+    function tf_require_direction_access(PDO $pdo, $message = 'Acceso restringido a usuarios con acceso directivo.') {
+        $user = tf_current_user($pdo);
+        if (tf_user_has_direction_access($user)) {
+            return $user;
+        }
+
+        tf_audit_log($pdo, 'access.denied', 'rbac', null, [
+            'required_scope' => 'direction',
+            'uri' => $_SERVER['REQUEST_URI'] ?? null,
+        ]);
+        tf_abort(403, $message);
+    }
+
     function tf_require_role(PDO $pdo, $roleCodes) {
         if (!is_array($roleCodes)) $roleCodes = [$roleCodes];
         $user = tf_current_user($pdo);
-        $code = $user['role']['code'] ?? '';
-        if (!in_array($code, $roleCodes, true)) {
+        $roleCode = $user['role']['code'] ?? '';
+        if (!in_array($roleCode, $roleCodes, true)) {
+            tf_audit_log($pdo, 'access.denied', 'rbac', null, [
+                'required_roles'  => $roleCodes,
+                'user_role'       => $roleCode,
+                'uri'             => $_SERVER['REQUEST_URI'] ?? null,
+            ]);
             tf_abort(403, 'Rol insuficiente para esta accion');
         }
         return $user;
@@ -326,6 +447,11 @@ if (!defined('TF_RBAC_LOADED')) {
         $user = tf_current_user($pdo);
         $level = (int)($user['role']['level'] ?? 0);
         if ($level < $minLevel) {
+            tf_audit_log($pdo, 'access.denied', 'rbac', null, [
+                'required_level' => $minLevel,
+                'user_level'     => $level,
+                'uri'            => $_SERVER['REQUEST_URI'] ?? null,
+            ]);
             tf_abort(403, 'Nivel de rol insuficiente');
         }
         return $user;
@@ -363,20 +489,20 @@ if (!defined('TF_RBAC_LOADED')) {
     function tf_security_headers() {
         if (headers_sent()) return;
         header('X-Content-Type-Options: nosniff');
-        header('X-Frame-Options: SAMEORIGIN');
+        header('X-Frame-Options: DENY');
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
         // CSP: permite los CDN usados por el proyecto + source maps (.map)
         // Los .map se piden por fetch() y caen bajo connect-src, no script-src.
         $csp = "default-src 'self'; "
-             . "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.datatables.net https://cdnjs.cloudflare.com; "
-             . "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.datatables.net https://cdnjs.cloudflare.com; "
+             . "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.datatables.net https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+             . "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.datatables.net https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
              . "style-src 'self' 'unsafe-inline' https://cdn.datatables.net https://fonts.googleapis.com; "
              . "style-src-elem 'self' 'unsafe-inline' https://cdn.datatables.net https://fonts.googleapis.com; "
              . "font-src 'self' https://fonts.gstatic.com https://cdn.datatables.net; "
              . "img-src 'self' data:; "
              . "connect-src 'self' https://cdn.datatables.net; "
-             . "frame-ancestors 'self'; "
+             . "frame-ancestors 'none'; "
              . "base-uri 'self'; "
              . "form-action 'self'; "
              . "object-src 'none'";
