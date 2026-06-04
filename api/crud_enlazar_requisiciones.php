@@ -46,7 +46,15 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case  6:
-        $consulta = "SELECT `presiones_nombre` FROM `presiones` WHERE `presiones_id` = ?";
+        $consulta = "SELECT p.presiones_nombre,
+                           COALESCE(p.presiones_total, 0) AS presiones_total,
+                           COALESCE(SUM(h.hojaRequisicion_total),0) AS totalYaLigado
+                    FROM presiones p
+                    LEFT JOIN hojasrequisicion h
+                        ON h.hojaRequisicion_idPresion = p.presiones_id
+                       AND h.hojaRequisicion_estatus NOT IN ('NUEVO','PENDIENTE','RECHAZADA')
+                    WHERE p.presiones_id = ?
+                    GROUP BY p.presiones_id, p.presiones_nombre, p.presiones_total";
         $resultado = $conexion->prepare($consulta);
         $resultado->execute(array((int)$idPresion));
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);

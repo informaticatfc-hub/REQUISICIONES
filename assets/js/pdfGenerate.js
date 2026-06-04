@@ -31,6 +31,29 @@ function generarPDFRequisicion(Numero_Req, clave, requisicion, NameUser, itemsOr
     });
     doc.save(Numero_Req+" "+'HOJA N°' + requisicion.hojaRequisicion_numero);
 }
+
+function generarPDFRequisicionBlob(Numero_Req, clave, requisicion, NameUser, itemsOrdenArray, obras) {
+    var doc = new jsPDF('l', 'mm', 'a4', true);
+    var pages = createPages(convertToArrayStrings(itemsOrdenArray));
+    ultimapagina = false;
+
+    pages.forEach((ArrayItems, index) => {
+        if (index == pages.length - 1) {
+            ultimapagina = true;
+        }
+        creaEncabezadoOrden(doc);
+        datosEmpresa(doc, Numero_Req, clave, requisicion);
+        datosProveedor(doc, requisicion);
+        complementarios(doc, requisicion, obras);
+        itemDeOrden(doc, ArrayItems, requisicion, ultimapagina);
+        creaPieDeOrden(doc, NameUser, requisicion, index + 1, pages.length);
+        if (index < pages.length - 1) {
+            doc.addPage('a4', 'l');
+        }
+    });
+
+    return doc.output('blob');
+}
 function creaEncabezadoOrden(doc) {
     doc.setFontSize(12);
     doc.setFontStyle('bold');

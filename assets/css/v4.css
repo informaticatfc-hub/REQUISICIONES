@@ -71,7 +71,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 body.tf-app {
     margin: 0;
@@ -183,6 +183,7 @@ body.tf-app a:hover { color: var(--tf-brand-700); }
     font-size: .85rem; font-family: inherit;
     line-height: 1; text-align: left;
 }
+.tf-search { display: none !important; }
 .tf-search:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.22); }
 .tf-search i { font-size: .95rem; flex-shrink: 0; }
 .tf-search-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -572,8 +573,8 @@ a.tf-kpi:hover {
 .tf-cmd-overlay {
     position: fixed; inset: 0;
     background: rgba(11,20,36,.55);
-    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-    z-index: 1080;
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    z-index: 1100;
     display: none;
     align-items: flex-start; justify-content: center;
     padding: 12vh 16px 16px;
@@ -599,6 +600,20 @@ a.tf-kpi:hover {
     font-family: inherit;
 }
 .tf-cmd-list { max-height: 360px; overflow-y: auto; padding: 8px; }
+.tf-cmd-obras-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    max-height: 360px;
+    overflow-y: auto;
+}
+.tf-cmd-obra-item {
+    width: 100%;
+    border: 1px solid var(--tf-border);
+    background: var(--tf-surface);
+    text-align: left;
+}
 .tf-cmd-item {
     display: flex; align-items: center; gap: 12px;
     padding: 10px 12px;
@@ -777,6 +792,21 @@ a.tf-kpi:hover {
     .tf-card-header { padding: 12px 16px; }
     .tf-card-body { padding: 14px 16px; }
     .tf-obra-row { padding: 12px 4px; }
+    .tf-cmd-overlay {
+        align-items: stretch;
+        padding: 8px;
+    }
+    .tf-cmd {
+        width: 100%;
+        max-height: calc(100dvh - 16px);
+        display: flex;
+        flex-direction: column;
+    }
+    .tf-cmd-list,
+    .tf-cmd-obras-list {
+        max-height: none;
+        flex: 1 1 auto;
+    }
 }
 @media (max-width: 479.98px) {
     :root { --tf-page-px: 12px; }
@@ -1286,3 +1316,272 @@ body.tf-login {
 .tf-status-active   { color: #16a34a; }
 .tf-status-inactive { color: #94a3b8; }
 [data-bs-theme="dark"] .tf-status-active { color: #4ade80; }
+
+/* ============================================================
+   FASE 3 — Badges, Detail Grid, Form Sections, Filter Box
+   ============================================================ */
+
+/* Hoja-status badges (more pronounced than chips) */
+.tf-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: .7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em;
+    white-space: nowrap;
+}
+.tf-badge-nuevo      { background: var(--tf-info-50);             color: var(--tf-info-600); }
+.tf-badge-pendiente  { background: var(--tf-warning-50);          color: var(--tf-warning-600); }
+.tf-badge-revision   { background: rgba(124,58,237,.12);          color: #7c3aed; }
+.tf-badge-ligada     { background: rgba(59,130,246,.12);          color: var(--tf-brand-700); }
+.tf-badge-rechazada  { background: var(--tf-danger-50);           color: var(--tf-danger-600); }
+.tf-badge-autorizada { background: var(--tf-success-50);          color: var(--tf-success-600); }
+.tf-badge-pagada     { background: #dcfce7;                       color: #16a34a; }
+[data-bs-theme="dark"] .tf-badge-pendiente  { color: #fbbf24; }
+[data-bs-theme="dark"] .tf-badge-rechazada  { color: #fca5a5; }
+[data-bs-theme="dark"] .tf-badge-autorizada { color: #86efac; }
+[data-bs-theme="dark"] .tf-badge-pagada     { color: #4ade80; }
+
+/* Detail grid (emisor / proveedor panels in items_requisicion) */
+.tf-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px; padding: 18px 20px;
+}
+@media (max-width: 767.98px) { .tf-detail-grid { grid-template-columns: 1fr; } }
+.tf-detail-section-title {
+    font-size: .72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--tf-text-muted);
+    margin: 0 0 10px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--tf-border);
+}
+.tf-detail-row {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 5px 0; border-bottom: 1px solid var(--tf-border);
+}
+.tf-detail-row:last-child { border-bottom: 0; }
+.tf-detail-row > span:first-child {
+    font-size: .78rem; color: var(--tf-text-soft);
+    font-weight: 500; min-width: 90px; flex-shrink: 0;
+}
+.tf-detail-row strong { font-size: .88rem; color: var(--tf-text); font-weight: 600; }
+
+/* Form section separator */
+.tf-form-section-title {
+    font-size: .78rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--tf-text-muted);
+    margin: 28px 0 14px; padding-bottom: 8px;
+    border-bottom: 2px solid rgba(59,130,246,.18);
+}
+
+/* Filter / KPI box (used in reportes_kpi) */
+.tf-filter-box {
+    background: var(--tf-surface);
+    border: 1px solid var(--tf-border);
+    border-radius: var(--tf-radius-lg);
+    padding: 20px 22px;
+    box-shadow: var(--tf-shadow-sm);
+    margin-bottom: 24px;
+}
+
+/* Page header refinement (for legacy-migrated pages) */
+.tf-page-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 16px; margin-bottom: 24px; padding-bottom: 18px;
+    border-bottom: 1px solid var(--tf-border); flex-wrap: wrap;
+}
+.tf-page-header > div:first-child { min-width: 0; flex: 1 1 320px; }
+
+/* Excel-grid page styles (all_presiones) */
+.tf-excel-wrap {
+    border: 1px solid var(--tf-border);
+    border-radius: var(--tf-radius);
+    background: var(--tf-surface);
+    overflow: auto;
+    margin-bottom: 20px;
+}
+.tf-excel-grid {
+    border-collapse: collapse !important;
+    min-width: 1300px;
+    background: var(--tf-surface);
+}
+.tf-excel-grid thead th {
+    position: sticky; top: 0;
+    background: rgba(59,130,246,.08) !important;
+    color: var(--tf-text) !important;
+    border: 1px solid var(--tf-border) !important;
+    font-size: .75rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em;
+    padding: 8px 10px;
+}
+.tf-excel-grid tbody td {
+    border: 1px solid var(--tf-border) !important;
+    background: var(--tf-surface) !important;
+    padding: 6px 8px !important;
+    vertical-align: middle;
+}
+.tf-excel-grid tbody tr:hover td { background: var(--tf-surface-2) !important; }
+.tf-excel-grid tbody tr.row-dirty td { background: #fff7ed !important; }
+.tf-excel-grid tbody tr.row-dirty:hover td { background: #ffedd5 !important; }
+.tf-excel-cell-input {
+    border: 1px solid transparent; border-radius: 6px;
+    background: var(--tf-surface);
+    min-height: 32px; width: 100%;
+    padding: 4px 6px; font-size: .84rem;
+    color: var(--tf-text); font-family: inherit;
+}
+.tf-excel-cell-input:focus {
+    outline: none;
+    border-color: var(--tf-brand-500);
+    box-shadow: 0 0 0 2px rgba(59,130,246,.16);
+}
+.tf-excel-toolbar {
+    display: grid;
+    grid-template-columns: 160px 1fr auto;
+    gap: 8px; align-items: center; margin-bottom: 10px;
+}
+.tf-excel-utility-bar {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    align-items: center; margin-bottom: 10px;
+}
+.tf-chip-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 26px; height: 26px;
+    border-radius: 999px; padding: 0 8px;
+    font-size: .75rem; font-weight: 700;
+    background: var(--tf-brand-600); color: #fff;
+}
+
+/* ============================================================
+   ADMIN — Tabs de navegacion, Roles y Permisos
+   ============================================================ */
+
+/* Tab nav bar */
+.tf-admin-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--tf-border);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0;
+    flex-wrap: wrap;
+}
+.tf-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    font-size: .88rem;
+    font-weight: 600;
+    color: var(--tf-text-soft);
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+}
+.tf-tab-btn:hover { color: var(--tf-text); background: var(--tf-surface-2); }
+.tf-tab-btn.active {
+    color: var(--tf-brand-600);
+    border-bottom-color: var(--tf-brand-600);
+    background: none;
+}
+
+/* Layout dos columnas para roles */
+.tf-roles-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 1.25rem;
+    align-items: start;
+}
+@media (max-width: 767.98px) {
+    .tf-roles-layout { grid-template-columns: 1fr; }
+}
+
+/* Item en lista de roles */
+.tf-role-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--tf-border);
+    cursor: pointer;
+    transition: background .12s;
+}
+.tf-role-item:last-child { border-bottom: 0; }
+.tf-role-item:hover { background: var(--tf-surface-2); }
+.tf-role-item.active {
+    background: rgba(59,130,246,.08);
+    border-left: 3px solid var(--tf-brand-600);
+}
+
+/* Placeholder panel cuando no hay rol seleccionado */
+.tf-roles-placeholder {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    text-align: center;
+}
+
+/* Grupo de permisos por modulo */
+.tf-perm-group { margin-bottom: 1.75rem; }
+.tf-perm-module {
+    font-size: .72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--tf-text-muted);
+    margin: 0 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--tf-border);
+}
+
+/* Grid de permisos */
+.tf-perm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 8px;
+}
+.tf-perm-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--tf-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color .12s, background .12s;
+}
+.tf-perm-item:hover { background: var(--tf-surface-2); }
+.tf-perm-item.granted {
+    border-color: rgba(59,130,246,.35);
+    background: rgba(59,130,246,.05);
+}
+.tf-perm-item input[type="checkbox"] {
+    margin-top: 3px;
+    flex-shrink: 0;
+    accent-color: var(--tf-brand-600);
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+.tf-perm-item strong { font-size: .82rem; }
+.tf-perm-item small  { font-size: .75rem; color: var(--tf-text-muted); }
+
+/* Nota para rol admin */
+.tf-perm-admin-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(59,130,246,.08);
+    border: 1px solid rgba(59,130,246,.25);
+    border-radius: 8px;
+    font-size: .88rem;
+    color: var(--tf-brand-700);
+    margin-bottom: 1.5rem;
+}

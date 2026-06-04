@@ -6,15 +6,13 @@ require_once __DIR__ . '/../api/conexion.php';
 $__pdo  = (new Conexion())->Conectar();
 $__user = tf_current_user($__pdo);
 
-if (!tf_has_permission('catalogos.view', $__user)) {
-    tf_abort(403, 'No tienes permiso para acceder a los catalogos');
-}
+tf_require_any_permission($__pdo, ['catalogos.view'], 'No tienes permiso para acceder a los catalogos');
 
 $usuario_nombre  = $__user['user_name']    ?? '';
 $usuario_rol     = $__user['role']['name'] ?? 'Residente';
 $usuario_rolCode = $__user['role']['code'] ?? 'residente';
 $usuario_perms   = $__user['permissions']  ?? [];
-$usuario_dirAcc  = (int)($__user['user_directionAcess'] ?? 0);
+$usuario_dirAcc  = tf_user_has_direction_access($__user) ? 1 : 0;
 
 $tf_page_title     = 'Catalogos';
 $tf_active_nav     = 'catalogos';
@@ -29,8 +27,8 @@ $tf_user           = [
     'initials'    => '',
     'permissions' => $usuario_perms,
 ];
-$tf_show_direccion = in_array($usuario_rolCode, ['admin','director'], true) || $usuario_dirAcc === 1;
-$tf_show_admin     = $usuario_rolCode === 'admin';
+$tf_show_direccion = tf_user_has_direction_access($__user);
+$tf_show_admin     = in_array($usuario_rolCode, ['admin', 'desarrollador'], true) || tf_has_permission('admin.users.view', $__user);
 $tf_show_subbar    = true;
 $tf_user_id_js     = (string)($__user['user_id'] ?? '');
 
@@ -109,7 +107,7 @@ include __DIR__ . '/../includes/layout_top.php';
     </section>
 
     <!-- Info de permisos contextual -->
-    <section class="tf-card" v-if="false">
+    <section class="tf-card" x-show="false">
         <!-- placeholder para futuros catalogos -->
     </section>
 

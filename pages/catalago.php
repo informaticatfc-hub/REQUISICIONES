@@ -1,9 +1,9 @@
 <?php
 include_once '../validarSesion.php';
-?>
-<!DOCTYPE html>
-<html>
+require_once __DIR__ . '/../api/rbac.php';
+require_once __DIR__ . '/../api/conexion.php';
 
+<<<<<<< Updated upstream
 <head>
     <meta charset="utf8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
@@ -141,5 +141,13 @@ include_once '../validarSesion.php';
 </body>
 
 </html>
+=======
+$__pdo  = (new Conexion())->Conectar();
+$__user = tf_current_user($__pdo);
+>>>>>>> Stashed changes
 
+tf_require_any_permission($__pdo, ['catalogos.view'], 'No tienes permiso para acceder a los catalogos');
 
+// Ruta legacy preservada: redirige al menu v4 estandarizado.
+header('Location: ./menu_catalago.php', true, 302);
+exit;

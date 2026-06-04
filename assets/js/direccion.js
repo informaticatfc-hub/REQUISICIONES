@@ -1,64 +1,56 @@
 var url = "../api/crud_direccion.php";
 var url2 = ".";
 
-const appRequesition = new Vue({
-    el: "#AppDireccion",
-    data: {
+function direccionApp() {
+    return {
         users: [],
         obras: [],
         obrasLista: [],
-        NameUser: ""
-    },
-    methods: {
-        consultarUsuario: function () {
-            // Fase 5: identidad por sesion server-side (sin localStorage.NameUser)
-            axios.post(url, { accion: 1 }).then(response => {
+        NameUser: "",
+        init: function () {
+            this.listarObras();
+            this.consultarUsuario();
+        },
+        consultarUsuario: async function () {
+            try {
+                // Fase 5: identidad por sesion server-side (sin localStorage.NameUser)
+                var response = await axios.post(url, { accion: 1 });
                 this.users = response.data || [];
                 if (this.users[0] && this.users[0].user_name) {
                     this.NameUser = this.users[0].user_name;
                 }
-            }).catch(err => console.error("consultarUsuario:", err));
+            } catch (err) {
+                console.error("consultarUsuario:", err);
+            }
         },
-        infoObraActiva: function (obrasId) {
-            axios.post(url, { accion: 3, obra: obrasId }).then(response => {
-                this.obras = response.data;
-                console.log(this.obras);
-            });
+        infoObraActiva: async function (obrasId) {
+            var response = await axios.post(url, { accion: 3, obra: obrasId });
+            this.obras = response.data;
+            console.log(this.obras);
         },
-        listarObras: function () {
-            axios.post(url, { accion: 2 }).then(response => {
-                this.obrasLista = response.data;
-                console.log(this.obrasLista);
-            });
+        listarObras: async function () {
+            var response = await axios.post(url, { accion: 2 });
+            this.obrasLista = response.data;
+            console.log(this.obrasLista);
         },
-        irObra(idObra) {
+        irObra: function (idObra) {
             localStorage.setItem("obraActiva", idObra);
             window.location.href = url2 + "/obras.php";
         },
-        enterRequisiciones: function()
-        {
+        enterRequisiciones: function () {
             window.location.href = url2 + "/requisiciones.php";
         },
-        enterAllPresiones: function()
-        {
+        enterAllPresiones: function () {
             window.location.href = url2 + "/all_presiones.php";
         },
-        enterReportesKpi: function()
-        {
+        enterReportesKpi: function () {
             window.location.href = url2 + "/reportes_kpi.php";
         },
-        irDireecion: function(){
+        irDireecion: function () {
             window.location.href = url2 + "/direccion.php";
         },
-        irMenuCatalago: function(){
+        irMenuCatalago: function () {
             window.location.href = url2 + "/menu_catalago.php";
         }
-    },
-    created: function () {
-        this.listarObras();
-        this.consultarUsuario();
-    },
-    computed: {
-
-    }
-});
+    };
+}

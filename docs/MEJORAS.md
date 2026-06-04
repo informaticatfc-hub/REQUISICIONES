@@ -210,7 +210,7 @@ extiende a un sistema RBAC limpio.
 | Bug | Archivo / línea | Severidad |
 |---|---|---|
 | `localStorage.setItem("NameUser", user_id)` — el front confía en este valor para `consultarUsuario(user_id)`. Editable por el usuario. | `login.js` ~52, `index.js` ~36 | **Alta** — debería usar la sesión del servidor (`/api/me`) |
-| `JOIN` en `consultas.sql` referencia tabla `provedores` (con typo) — confirma que la tabla está en BD con ese typo. Si se renombra, romper. | `api/consultas.sql` | Media |
+| `JOIN` en `consultas_legacy.sql` referencia tabla `provedores` (con typo) — confirma que la tabla está en BD con ese typo. Si se renombra, romper. | `docs/consultas_legacy.sql` | Media |
 | En `LoginAcces.php`, si `$user["user_password"]` es null no se evalúa con `isset`, lo cual sí lo cubre, pero el flujo de migración a hash mantiene comparaciones en plano. | `api/LoginAcces.php` | Media |
 | `crud_index.php` interpola `$limite` directo al SQL (`LIMIT $limite`). Lo castea a `int` y lo recorta, pero idealmente debería ir vía `bindValue(PDO::PARAM_INT)`. | `api/crud_index.php` | Baja |
 | `assets/lib/jquery/jquery-3.7.1.slim.min.js` cargado en login pero el formulario nunca usa jQuery. | `pages/login.php` | Baja |

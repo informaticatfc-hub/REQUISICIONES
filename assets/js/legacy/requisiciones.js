@@ -376,6 +376,11 @@ const appRequesition = new Vue({
         await this.consultarUsuario();
         await this.infoObraActiva(obraId);
         await this.listarRequisiciones(obraId);
+        this.$nextTick(function () {
+            // Inicializar tooltips Bootstrap 5 en los badges de estado
+            var tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            tooltipEls.forEach(function (el) { new bootstrap.Tooltip(el); });
+        });
     },
     computed: {
 

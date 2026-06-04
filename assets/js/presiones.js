@@ -1,9 +1,8 @@
 var url = "../api/crud_Presiones.php";
 var url2 = ".";
 
-const appRequesition = new Vue({
-    el: "#AppPresion",
-    data: {
+function presionesApp() {
+    return {
         presiones: [],
         users: [],
         obras: [],
@@ -13,10 +12,20 @@ const appRequesition = new Vue({
         dia: "",
         clave: "",
         NameUser: "",
+        activeTab: "todas",
+        totalPresiones: 0,
+        pendientesCount: 0,
+        autorizadasCount: 0,
+        totalRows: 0,
+        currentPage: 1,
+        totalPages: 1,
+        limite: 20,
+        searchText: "",
+        searchTimer: null,
+        loadingTable: false,
         alias: "",
         timeNow: ""
-    },
-    methods: {
+    ,
         ConsultarPresion: async function (idPresion, Accion, week, day) {
             console.log(idPresion + " " + Accion);
             switch (Accion) {
@@ -95,49 +104,46 @@ const appRequesition = new Vue({
                 Toast.fire({
                     icon: 'success',
                     title: 'Presion Agregada'
-                })
+                });
             }
         },
         listarPresiones: async function (obrasId) {
             try {
-                const response = await axios.post(url, { accion: 1, obra: obrasId });
-                this.presiones = response.data;
-                console.log(this.presiones);
-
-                this.$nextTick(() => {
-                    $(document).ready(function () {
-                        $('#example').DataTable({
-                            "order": [],
-                            "language": {
-                                "sProcessing": "Procesando...",
-                                "sLengthMenu": "Mostrar _MENU_ registros",
-                                "sZeroRecords": "No se encontraron resultados",
-                                "sEmptyTable": "Ningún dato disponible en esta tabla",
-                                "sInfo": "Mostrando registros del _START_ al _END_ de un total de _TOTAL_ registros",
-                                "sInfoEmpty": "Mostrando registros del 0 al 0 de un total de 0 registros",
-                                "sInfoFiltered": "(filtrado de un total de _MAX_ registros)",
-                                "sInfoPostFix": "",
-                                "sSearch": "Buscar:",
-                                "sUrl": "",
-                                "sInfoThousands": ",",
-                                "sLoadingRecords": "Cargando...",
-                                "oPaginate": {
-                                    "sFirst": "Primero",
-                                    "sLast": "Último",
-                                    "sNext": "Siguiente",
-                                    "sPrevious": "Anterior"
-                                },
-                                "oAria": {
-                                    "sSortAscending": ": Activar para ordenar la columna de manera ascendente",
-                                    "sSortDescending": ": Activar para ordenar la columna de manera descendente"
-                                }
-                            },
-                            "autoWidth": false, // Deshabilita el auto ancho
-                        });
-                    });
+                this.loadingTable = true;
+                var estatus = this.activeTab === 'pendientes' ? 'AUTORIZADO' : '';
+                const response = await axios.post(url, {
+                    accion: 1,
+                    obra: obrasId,
+                    page: this.currentPage,
+                    limite: this.limite,
+                    search: this.searchText,
+                    estatus: estatus,
+                    serverSide: 1
                 });
+                var payload = response.data || {};
+                var rows = Array.isArray(payload) ? payload : (payload.rows || []);
+                this.presiones = rows;
+                if (!Array.isArray(payload)) {
+                    this.totalRows = Number(payload.total || 0);
+                    this.currentPage = Number(payload.page || this.currentPage || 1);
+                    this.totalPages = Number(payload.pages || 1);
+                    var stats = payload.stats || {};
+                    this.totalPresiones = Number(stats.total || 0);
+                    this.pendientesCount = Number(stats.pendientes || 0);
+                    this.autorizadasCount = Number(stats.autorizadas || 0);
+                } else {
+                    this.totalRows = rows.length;
+                    this.currentPage = 1;
+                    this.totalPages = 1;
+                    this.totalPresiones = rows.length;
+                    this.pendientesCount = rows.filter(function (p) { return p.presiones_estatus === 'PENDIENTE'; }).length;
+                    this.autorizadasCount = rows.filter(function (p) { return p.presiones_estatus === 'AUTORIZADO'; }).length;
+                }
+                console.log(this.presiones);
             } catch (error) {
                 console.error("Error al Listar las Presiones:", error);
+            } finally {
+                this.loadingTable = false;
             }
         },
         consultarUsuario: async function () {
@@ -161,10 +167,8 @@ const appRequesition = new Vue({
             dia = dia < 10 ? '0' + dia : dia;
             var fechaActual = fecha.getFullYear() + "-" + mes + "-" + dia;
             axios.post(url, { accion: 3, alias: this.alias, semana: this.semana, dia: this.dia, time: this.timeNow, fecha: fechaActual, user_creado: 0, obra: localStorage.getItem("obraActiva") }).then(response => {
-                var table = $('#example').DataTable();
-                // Para reinicializarlo, primero destrúyelo
-                table.destroy();
                 console.log(response.data);
+                this.currentPage = 1;
                 this.listarPresiones(localStorage.getItem("obraActiva"));
             });
         },
@@ -217,25 +221,50 @@ const appRequesition = new Vue({
 
             return formattedTime;
         },
-        cargarDataTable: function () {
-
+        onSearchInput: function () {
+            if (this.searchTimer) clearTimeout(this.searchTimer);
+            this.searchTimer = setTimeout(() => {
+                this.currentPage = 1;
+                this.listarPresiones(localStorage.getItem("obraActiva"));
+            }, 350);
+        },
+        goToPage: function (page) {
+            if (this.loadingTable) return;
+            var target = Math.max(1, Math.min(this.totalPages, parseInt(page, 10) || 1));
+            if (target === this.currentPage) return;
+            this.currentPage = target;
+            this.listarPresiones(localStorage.getItem("obraActiva"));
         },
         irDireecion: function(){
             window.location.href = url2 + "/direccion.php";
         },
         irMenuCatalago: function(){
             window.location.href = url2 + "/menu_catalago.php";
-        }
-    },
-    mounted: async function () {
+        },
+        setActiveTab: function (tab) {
+            if (this.activeTab === tab) return;
+            this.activeTab = tab;
+            this.currentPage = 1;
+            this.listarPresiones(localStorage.getItem("obraActiva"));
+        },
+        init: async function () {
             await this.consultarUsuario();
             var obraId = localStorage.getItem("obraActiva");
             if (!obraId) { window.location.href = './obras.php'; return; }
             await this.listarObras();
             await this.infoObraActiva(obraId);
             await this.listarPresiones(obraId);
-    },
-    computed: {
-
-    }
-});
+        },
+        get pendientesDePago() {
+            return this.presiones;
+        },
+        get pageRange() {
+            var start = Math.max(1, this.currentPage - 2);
+            var end = Math.min(this.totalPages, start + 4);
+            start = Math.max(1, end - 4);
+            var out = [];
+            for (var i = start; i <= end; i++) out.push(i);
+            return out;
+        }
+    };
+}

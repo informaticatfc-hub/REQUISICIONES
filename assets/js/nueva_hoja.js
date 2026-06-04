@@ -1,15 +1,42 @@
 var url = "../api/crud_nueva_hoja.php";
 var url2 = ".";
 
-const appRequesition = new Vue({
-    el: "#AppReq",
-    data: {
+function nuevaHojaApp() {
+    return {
         emisores: [],
         proveedores: [],
         Items: [],
         users: [],
         obras: [],
         selected_Provedor: "",
+        // C-M1: búsqueda combinada por nombre/RFC/CLABE
+        provSearchText: "",
+        provDropOpen: false,
+        Prov_Nombre_Display: "",
+        get provSearchResults() {
+            var q = (this.provSearchText || "").trim().toLowerCase();
+            if (!q) return [];
+            return this.proveedores.filter(function (p) {
+                return (String(p.proveedor_nombre || "").toLowerCase().indexOf(q) !== -1)
+                    || (String(p.proveedor_rfc || "").toLowerCase().indexOf(q) !== -1)
+                    || (String(p.proveedor_clabe || "").toLowerCase().indexOf(q) !== -1);
+            }).slice(0, 20);
+        },
+        seleccionarProveedor: function (p) {
+            this.provSearchText = p.proveedor_nombre;
+            this.provDropOpen   = false;
+            this.Prov_Id        = p.proveedor_id;
+            this.Prov_Nombre_Display = p.proveedor_nombre;
+            this.Prov_RFC       = p.proveedor_rfc        || "";
+            this.Prov_Clabe     = p.proveedor_clabe      || "";
+            this.Prov_Cuenta    = p.proveedor_numeroCuenta || "";
+            this.Prov_Email     = p.proveedor_email      || "";
+            this.Prov_Phone     = p.proveedor_telefono   || "";
+            this.Prov_SucBank   = p.proveedor_sucursal   || "";
+            this.Prov_RefBank   = p.proveedor_refBanco   || "";
+            this.Prov_Bank      = p.proveedor_banco      || "";
+            this.Prov_BankCard  = p.presiones_tarjetaBanco || "";
+        },
         //Datos del Emisor
         Emisor_Id: "",
         Emisor_Nombre: "",
@@ -62,8 +89,7 @@ const appRequesition = new Vue({
         idHoja: "",
         conceptoUnico: false,
         conceptoUnicoText: ""
-    },
-    methods: {
+    ,
         pagoTransaccionActivado: async function () {
             if (this.PagoTrans == false) {
                 this.PagoTrans = true;
@@ -502,8 +528,8 @@ const appRequesition = new Vue({
             }
             this.Item_Lote = this.Items.length;
         }
-    },
-    created: function () {
+    ,
+    init: function () {
         this.listarObras();
         this.agregarEmisor();
         this.consultarUsuario();
@@ -581,7 +607,6 @@ const appRequesition = new Vue({
             </div>
         `;
 
-    },
-    computed: {
     }
-});
+};
+}
