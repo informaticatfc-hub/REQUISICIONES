@@ -58,59 +58,7 @@ include __DIR__ . '/../includes/layout_top.php';
                 Consulta y gestiona las requisiciones de compra de la obra activa.
             </p>
         </div>
-        <div class="tf-page-header-actions">
-            <?php if ($canCreate): ?>
-            <button type="button" class="tf-btn tf-btn-primary" x-on:click="addRequisicion">
-                <i class="bi bi-file-earmark-plus"></i> Nueva requisicion
-            </button>
-            <?php endif; ?>
-        </div>
     </header>
-
-    <!-- KPIs -->
-    <section class="tf-kpi-grid" aria-label="Resumen">
-        <article class="tf-kpi">
-            <div class="tf-kpi-head">
-                <span class="tf-kpi-icon tf-kpi-icon-primary"><i class="bi bi-receipt"></i></span>
-                <span class="tf-kpi-label">Total</span>
-            </div>
-            <div class="tf-kpi-value" x-text="totalRequisiciones"></div>
-        </article>
-        <article class="tf-kpi">
-            <div class="tf-kpi-head">
-                <span class="tf-kpi-icon tf-kpi-icon-warning"><i class="bi bi-folder2-open"></i></span>
-                <span class="tf-kpi-label">Abiertas</span>
-            </div>
-            <div class="tf-kpi-value" x-text="countAbiertas"></div>
-        </article>
-        <article class="tf-kpi">
-            <div class="tf-kpi-head">
-                <span class="tf-kpi-icon tf-kpi-icon-success"><i class="bi bi-check-circle-fill"></i></span>
-                <span class="tf-kpi-label">Cerradas</span>
-            </div>
-            <div class="tf-kpi-value" x-text="countCerradas"></div>
-        </article>
-        <article class="tf-kpi">
-            <div class="tf-kpi-head">
-                <span class="tf-kpi-icon tf-kpi-icon-danger"><i class="bi bi-x-octagon-fill"></i></span>
-                <span class="tf-kpi-label">En página</span>
-            </div>
-            <div class="tf-kpi-value" x-text="requisiciones.length"></div>
-        </article>
-    </section>
-
-    <!-- R-M4: Alerta de demasiadas requisiciones abiertas (>= 5 sin cerrar) -->
-    <div class="alert alert-warning alert-dismissible d-flex align-items-center gap-2 mb-3"
-         role="alert"
-         x-show="abiertasCount >= 5"
-         x-cloak>
-        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 fs-5"></i>
-        <div>
-            <strong>Atención:</strong> Hay <strong x-text="abiertasCount"></strong> requisiciones abiertas en esta obra.
-            Se recomienda revisar y cerrar las que ya no sean necesarias antes de crear nuevas.
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-    </div>
 
     <!-- Tabla de requisiciones -->
     <section class="tf-card">
@@ -379,39 +327,21 @@ $tf_inline_script = <<<JS
             },
             addRequisicion: async function () {
                 if (!CAN_CREATE) return;
-                var auto = (this.obras[0] || {}).obra_automatico == 1;
-                var html = auto
-                    ? '<div class="text-start">'
+                var html = '<div class="text-start">'
                       + '<div class="mb-2"><label class="form-label">Nombre de la Requisicion</label>'
                       + '<input id="nombreRequisicion" class="form-control"></div>'
                       + '<div class="mb-2"><label class="form-label">Fecha</label>'
                       + '<input type="date" id="fechaGeneracion" class="form-control"></div>'
-                      + '<div class="mb-2"><label class="form-label">Clave</label>'
+                      + '<div class="mb-2"><label class="form-label">Categoria</label>'
                       + '<select id="Clv" class="form-select">'
-                      + '<option value="">Selecciona clave</option>'
+                      + '<option value="">Selecciona categoria</option>'
                       + '<option value="MAT">MAT - Material</option>'
                       + '<option value="EQH">EQH - Equipo/Maquinaria</option>'
                       + '<option value="IND">IND - Indirectos</option>'
                       + '<option value="MO">MO - Mano de Obra</option>'
-                      + '</select></div></div>'
-                    : '<div class="text-start">'
-                      + '<div class="row g-2 mb-2">'
-                      + '<div class="col-6"><label class="form-label">Folio</label>'
-                      + '<input id="FolioReq" class="form-control"></div>'
-                      + '<div class="col-6"><label class="form-label">Hojas</label>'
-                      + '<input id="HojaReq" class="form-control"></div></div>'
-                      + '<div class="mb-2"><label class="form-label">Nombre</label>'
-                      + '<input id="nombreRequisicion" class="form-control"></div>'
-                      + '<div class="mb-2"><label class="form-label">Fecha</label>'
-                      + '<input type="date" id="fechaGeneracion" class="form-control"></div>'
-                      + '<div class="mb-2"><label class="form-label">Clave</label>'
-                      + '<select id="Clv" class="form-select">'
-                      + '<option value="">Selecciona clave</option>'
-                      + '<option value="MAT">MAT - Material</option>'
-                      + '<option value="EQH">EQH - Equipo/Maquinaria</option>'
-                      + '<option value="IND">IND - Indirectos</option>'
-                      + '<option value="MO">MO - Mano de Obra</option>'
-                      + '</select></div></div>';
+                      + '</select></div>'
+                      + '<p class="text-muted small mt-2 mb-0"><i class="bi bi-info-circle"></i> El folio se asigna automaticamente segun la categoria.</p>'
+                      + '</div>';
 
                 var self = this;
                 var res = await Swal.fire({
@@ -426,12 +356,7 @@ $tf_inline_script = <<<JS
                         self.nombreRequisicion = (document.getElementById('nombreRequisicion') || {}).value || '';
                         self.fechaGeneracion   = (document.getElementById('fechaGeneracion')   || {}).value || '';
                         self.clave             = (document.getElementById('Clv')               || {}).value || '';
-                        if (!auto) {
-                            self.folioReq = (document.getElementById('FolioReq') || {}).value || '';
-                            self.hojaReq  = (document.getElementById('HojaReq')  || {}).value || '';
-                        }
-                        if (!self.nombreRequisicion || !self.fechaGeneracion || !self.clave
-                            || (!auto && (!self.folioReq || !self.hojaReq))) {
+                        if (!self.nombreRequisicion || !self.fechaGeneracion || !self.clave) {
                             Swal.showValidationMessage('Completa todos los campos');
                             return false;
                         }
@@ -439,8 +364,7 @@ $tf_inline_script = <<<JS
                     }
                 });
                 if (!res.isConfirmed) return;
-                if (auto) this.newRequisicionAuto();
-                else      this.newRequisicionManual();
+                this.newRequisicionAuto();
             },
             newRequisicionAuto: function () {
                 axios.post(url, {

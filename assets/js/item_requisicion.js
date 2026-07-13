@@ -64,43 +64,6 @@ function itemRequisicionApp() {
             var st = this.hojaActiva.hojaRequisicion_estatus;
             return this.canReqEdit && (st === 'NUEVO' || st === 'PENDIENTE' || st === 'RECHAZADA');
         },
-        initDataTable: function () {
-            if (!(window.$ && $.fn && $.fn.DataTable)) return;
-            if ($.fn.DataTable.isDataTable('#example')) {
-                $('#example').DataTable().destroy();
-            }
-            $('#example').DataTable({
-                "searching": true,
-                "paging": true,
-                "order": [],
-                "responsive": true,
-                "autoWidth": false,
-                "language": {
-                    "sProcessing": "Procesando...",
-                    "sLengthMenu": "Mostrar _MENU_ registros",
-                    "sZeroRecords": "No se encontraron resultados",
-                    "sEmptyTable": "Ningún dato disponible en esta tabla",
-                    "sInfo": "Mostrando registros del _START_ al _END_ de un total de _TOTAL_ registros",
-                    "sInfoEmpty": "Mostrando registros del 0 al 0 de un total de 0 registros",
-                    "sInfoFiltered": "(filtrado de un total de _MAX_ registros)",
-                    "sInfoPostFix": "",
-                    "sSearch": "Buscar:",
-                    "sUrl": "",
-                    "sInfoThousands": ",",
-                    "sLoadingRecords": "Cargando...",
-                    "oPaginate": {
-                        "sFirst": "Primero",
-                        "sLast": "Último",
-                        "sNext": "Siguiente",
-                        "sPrevious": "Anterior"
-                    },
-                    "oAria": {
-                        "sSortAscending": ": Activar para ordenar la columna de manera ascendente",
-                        "sSortDescending": ": Activar para ordenar la columna de manera descendente"
-                    }
-                }
-            });
-        },
         round2: function (value) {
             var n = Number(value);
             if (!isFinite(n)) return 0;
@@ -133,12 +96,11 @@ function itemRequisicionApp() {
                  * 
                  * @type {array} response.data - La respuesta de la petición, que contiene los items de la hoja.
                  */
-                this.itemsHoja = response.data;
-                console.log(this.itemsHoja);
-                this.$nextTick(() => {
-                    this.initDataTable();
-                });
-            });
+                // Alpine (x-for) es el unico dueno de la tabla #example.
+                // NO inicializar DataTables aqui: jQuery DataTables y x-for
+                // se pelean por el mismo <tbody> y las filas desaparecen.
+                this.itemsHoja = Array.isArray(response.data) ? response.data : [];
+            }).catch(err => console.error('listarItems:', err));
         },
         /**
             * Función para consultar la información del usuario activo en la sesión de base de datos.

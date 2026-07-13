@@ -8,6 +8,10 @@ $__user = tf_current_user($__pdo);
 
 tf_require_any_permission($__pdo, ['requisiciones.view', 'requisiciones.edit', 'direccion.view', 'presiones.authorize'], 'No tienes permiso para ver los items de la requisición');
 
+// Permisos para la UI (botones de edicion/validacion). Sin esto el JS los recibe como false.
+$__canReqEdit   = tf_has_permission('requisiciones.create', $__user) || tf_has_permission('requisiciones.edit', $__user);
+$__canDireccion = tf_has_permission('direccion.view', $__user) || tf_user_has_direction_access($__user);
+
 $tf_page_title = 'Items de la Requisicion';
 $tf_active_nav = 'obras';
 $tf_breadcrumb = [['Inicio', './index.php'], ['Obras', './obras.php'], ['Requisiciones', './requisiciones.php'], ['Hojas de la Requisicion', './hojas_requisicion.php'], ['Items de la Requisicion', '#']];
@@ -24,8 +28,6 @@ $tf_show_admin = in_array(($__user['role']['code'] ?? ''), ['admin', 'desarrolla
 $tf_user_id_js = (string)($__user['user_id'] ?? '');
 
 $tf_extra_head = <<<'CSS'
-<link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/responsive/3.0.2/css/responsive.bootstrap5.css">
 <style>
 [x-cloak]{display:none!important;}
 .detail-row { display:grid; grid-template-columns: 1fr 2fr; gap:14px; border-bottom:1px solid var(--tf-border); padding:7px 0; }
@@ -37,52 +39,12 @@ CSS;
 include __DIR__ . '/../includes/layout_top.php';
 ?>
 
-<<<<<<< Updated upstream
-<head>
-    <meta charset="utf8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <link rel="icon" type="image/jpg" href="../images/TheFuenteIcon.png" />
-    <!--llamar a la extension de sweet alert-->
-    <link rel="stylesheet" href="../assets/lib/sweetalert/sweetalert2.min.css">
-    <!-- fuente de Roboto flex-->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap" rel="stylesheet">
-    <!--Fuentes de Iconos-->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <!--llamar a la extension de bootstrap-->
-    <!-- esta es la llamada via CDN-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">-->
-    <!-- esta es la llamada local-->
-    <link rel="stylesheet" href="../assets/lib/bootstrap/css/bootstrap.min.css">
-    <!--Esta es la llamada CSS de data table-->
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css">
-    <!--llamar a mi documento de CSS-->
-    <link rel="stylesheet" href="../assets/css/main.css">
-    <title>ITEMS DE LA REQUISICION</title>
-</head>
-
-<body class="app-layout">
-    <div id="AppItems">
-        <!--sidebar-->
-        <div class="d-flex flex-column flex-shrink-0 p-3 text-white position-fixed top-0 start-0 h-100 app-sidebar" id="sidebar">
-            <div class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
-                <div class="d-flex flex-row">
-                    <div class="d-flex align-items-center me-3">
-                        <img src="../images/icons/user.svg" alt="user-icon" height="60" width="60">
-                    </div>
-                    <div class="d-flex flex-column my-3">
-                        <span class="fs-5"> {{NameUser}}</span>
-                    </div>
-                </div>
-=======
 <div id="AppItems" class="tf-page-inner" x-data="itemRequisicionApp()" x-init="init()" x-cloak>
     <div class="tf-page-content">
         <div class="page-hdr">
             <div class="page-hdr-left">
                 <h2 class="page-title">Requisicion <span x-text="Numero_Req"></span> - Hoja <span x-text="hojaActiva.hojaRequisicion_numero || ''"></span></h2>
                 <p class="page-lead">Detalle completo de los items, encabezado y observaciones de la requisicion.</p>
->>>>>>> Stashed changes
             </div>
             <div class="page-hdr-right">
                 <button type="button" class="btn btn-success" x-on:click="cambiarProveedor()" x-show="isEditableSheet">Cambiar Proveedor</button>
@@ -189,8 +151,9 @@ include __DIR__ . '/../includes/layout_top.php';
 <?php
 $tf_use_vue = false;
 $tf_use_axios = true;
-$tf_use_jquery = true;
-$tf_use_datatables = true;
+// jQuery/DataTables ya no se usan: la tabla de items la renderiza Alpine (x-for).
+$tf_use_jquery = false;
+$tf_use_datatables = false;
 $tf_extra_scripts =
     '<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>' .
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js" integrity="sha384-NaWTHo/8YCBYJ59830LTz/P4aQZK1sS0SneOgAvhsIl3zBu8r9RevNg5lHCHAuQ/" crossorigin="anonymous"></script>' .

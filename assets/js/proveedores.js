@@ -189,7 +189,15 @@ function proveedoresApp() {
         },
         guardarProveedor: function (prov, idProveedor, formValues) {
             var self = this;
-            axios.post(url, { accion: 6, id_prov: idProveedor, formValues: formValues }).then(function () {
+            axios.post(url, { accion: 6, id_prov: idProveedor, formValues: formValues }).then(function (resp) {
+                if (resp.data && resp.data.duplicate) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Datos duplicados",
+                        text: "La CLABE o cuenta bancaria ya pertenece a: \"" + resp.data.proveedor_nombre + "\". Usa datos distintos."
+                    });
+                    return;
+                }
                 prov.proveedor_nombre = formValues.nombreProv;
                 prov.proveedor_rfc = formValues.RFCProv;
                 prov.proveedor_clabe = formValues.claveProv;

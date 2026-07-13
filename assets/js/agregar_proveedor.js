@@ -104,7 +104,7 @@ function addProveedorApp() {
             });
 
             if (result.isConfirmed) {
-                await axios.post(url, {
+                var resp = await axios.post(url, {
                     accion: 4,
                     nombre: this.nombre_prov,
                     direccion: this.direccion_prov,
@@ -119,7 +119,15 @@ function addProveedorApp() {
                     telefono: this.tel_prov,
                     correo: this.email_prov
                 });
-                Swal.fire("El proveedor fue guardada con Exito", "", "success");
+                if (resp.data && resp.data.duplicate) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Proveedor duplicado",
+                        text: "Ya existe un proveedor con la misma CLABE o cuenta bancaria: \"" + resp.data.proveedor_nombre + "\". Verifica los datos antes de continuar."
+                    });
+                    return;
+                }
+                Swal.fire("El proveedor fue guardado con éxito", "", "success");
                 return;
             }
 

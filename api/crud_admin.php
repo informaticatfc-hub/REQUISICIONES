@@ -29,8 +29,6 @@ $accion  = isset($payload['accion']) ? (int)$payload['accion'] : 0;
 // Carga del usuario actual (aborta 401 si no hay sesion)
 $me = tf_current_user($pdo);
 
-<<<<<<< Updated upstream
-=======
 function tf_admin_can_assign_obra(array $user) {
     $roleCode = strtolower((string)($user['role']['code'] ?? ''));
     $dirAcc = (int)($user['user_directionAcess'] ?? 0);
@@ -47,8 +45,6 @@ function tf_admin_forbidden(PDO $pdo, array $me, $reason, $message, array $extra
     ), $extra));
     api_json_error($message, 403);
 }
-
->>>>>>> Stashed changes
 $data = [];
 
 try {
@@ -85,23 +81,6 @@ switch ($accion) {
         $_obraName = isset($_uCols['user_obra_id']) ? "o.obras_nombre" : "NULL";
 
         $stmt = $pdo->query(
-<<<<<<< Updated upstream
-            "SELECT v.user_id,
-                    v.user_nameUser,
-                    v.user_name,
-                    v.email AS user_email,
-                    v.user_directionAcess,
-                    COALESCE(v.user_estatus,'ACTIVO') AS user_estatus,
-                    v.user_lastLogin,
-                    v.role_codigo,
-                    v.role_nombre,
-                    v.role_nivel,
-                    v.permisos_count,
-                    u.user_role_id
-               FROM `v_users_full` v
-               LEFT JOIN `users` u ON u.user_id = v.user_id
-               ORDER BY v.user_id DESC"
-=======
             "SELECT u.user_id,
                     u.user_nameUser,
                     u.user_name,
@@ -117,7 +96,6 @@ switch ($accion) {
                {$_roleJoin}
                {$_obraJoin}
                ORDER BY u.user_id DESC"
->>>>>>> Stashed changes
         );
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         break;
@@ -313,8 +291,6 @@ switch ($accion) {
         ];
         break;
 
-<<<<<<< Updated upstream
-=======
     case 8:
         // Listar obras activas para asignacion
         tf_require_permission($pdo, 'admin.users.view');
@@ -601,7 +577,6 @@ switch ($accion) {
         $data = ['ok' => true, 'grant' => $grant, 'obras_id' => $obraId];
         break;
 
->>>>>>> Stashed changes
     default:
         api_json_error('Accion invalida', 400);
 }

@@ -94,17 +94,16 @@ function presionesApp() {
                 }
             });
             if(formValues){
-                this.agregarPresion();
-                const Toast = Swal.mixin({
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3000
-                });
-                Toast.fire({
-                    icon: 'success',
-                    title: 'Presion Agregada'
-                });
+                var ok = await this.agregarPresion();
+                if (ok) {
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                    Toast.fire({ icon: 'success', title: 'Presion Agregada' });
+                }
             }
         },
         listarPresiones: async function (obrasId) {
@@ -158,7 +157,7 @@ function presionesApp() {
                 console.error("Error al consultar usuario:", error);
             }
         },
-        agregarPresion: function () {
+        agregarPresion: async function () {
             const fecha = new Date();
             var mes = fecha.getMonth() + 1;
             var dia = fecha.getDate();
@@ -166,11 +165,21 @@ function presionesApp() {
             mes = mes < 10 ? '0' + mes : mes;
             dia = dia < 10 ? '0' + dia : dia;
             var fechaActual = fecha.getFullYear() + "-" + mes + "-" + dia;
-            axios.post(url, { accion: 3, alias: this.alias, semana: this.semana, dia: this.dia, time: this.timeNow, fecha: fechaActual, user_creado: 0, obra: localStorage.getItem("obraActiva") }).then(response => {
-                console.log(response.data);
+            try {
+                const response = await axios.post(url, { accion: 3, alias: this.alias, semana: this.semana, dia: this.dia, time: this.timeNow, fecha: fechaActual, user_creado: 0, obra: localStorage.getItem("obraActiva") });
+                const result = response.data || {};
+                if (result.success === false) {
+                    Swal.fire({ icon: 'warning', title: 'No se pudo agregar', text: result.message || 'Ya existe una presión para esa obra, semana y día.' });
+                    return false;
+                }
                 this.currentPage = 1;
-                this.listarPresiones(localStorage.getItem("obraActiva"));
-            });
+                await this.listarPresiones(localStorage.getItem("obraActiva"));
+                return true;
+            } catch (err) {
+                console.error('agregarPresion error:', err);
+                Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar al servidor.' });
+                return false;
+            }
         },
         infoObraActiva: async function (obrasId) {
             try {

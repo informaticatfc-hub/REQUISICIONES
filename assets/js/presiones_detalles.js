@@ -240,17 +240,47 @@ function presionDetailApp() {
             if (safe.length > 31) safe = safe.slice(0, 31);
             return safe;
         },
-        
-<<<<<<< Updated upstream
-        exportarExcel: function () {
-            if (!window.XLSX || !window.XLSX.utils) {
-                Swal.fire('Excel no disponible', 'No fue posible cargar la libreria para exportar .xlsx.', 'warning');
-=======
+        // Fallback de exportacion cuando ExcelJS no esta disponible.
+        exportarCsv: function () {
+            var headers = ['CLAVE', 'NUM_REQUISICION', 'PROVEEDOR', 'CONCEPTO', 'ADEUDO', 'NETO_A_PAGAR', 'FORMA_PAGO', 'FECHA_PAGO', 'BANCO_PAGO'];
+            var rows = this.presiones
+                .filter(function (p) {
+                    return p.HojaEstatus === 'LIGADA' || p.HojaEstatus === 'AUTORIZADA' || p.HojaEstatus === 'PAGADA';
+                })
+                .map((p) => [
+                    p.clave || '',
+                    p.NumReq || '',
+                    p.proveedor || '',
+                    p.concepto || '',
+                    this.toNumber(p.total),
+                    this.toNumber(p.adeudo),
+                    p.formaPago || '',
+                    p.Fecha || '',
+                    p.Banco || ''
+                ]);
+            if (!rows.length) {
+                Swal.fire('Sin datos', 'No hay filas para exportar en esta presion.', 'info');
+                return;
+            }
+            var escape = function (v) {
+                var s = String(v == null ? '' : v);
+                return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+            };
+            var lines = [headers.join(',')].concat(rows.map(function (r) { return r.map(escape).join(','); }));
+            var obraNombre = (this.obraActiva.length && this.obraActiva[0].obras_nombre) ? this.obraActiva[0].obras_nombre : 'obra';
+            var safeObra = String(obraNombre).replace(/\s+/g, '_').replace(/[^A-Za-z0-9_\-.]/g, '_');
+            var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'PRESION_DETALLE_SEMANA_' + (this.semana || '-') + '_OBRA_' + safeObra + '.csv';
+            link.click();
+            URL.revokeObjectURL(link.href);
+        },
+
         exportarExcel: async function () {
             if (!this.excelJsDisponible()) {
                 this.exportarCsv();
                 Swal.fire('Excel no disponible', 'No fue posible cargar ExcelJS para exportar .xlsx. Se genero un CSV como alternativa.', 'info');
->>>>>>> Stashed changes
                 return;
             }
 

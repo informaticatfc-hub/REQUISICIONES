@@ -36,6 +36,18 @@ $currentUser = api_get_current_user($conexion);
 switch ($accion) {
     case 1:
          try {
+        // Validar que la requisición pertenece a una obra accesible por el usuario
+        $stmtObraReq = $conexion->prepare(
+            "SELECT requisicion_obra FROM `requisiciones` WHERE requisicion_id = ? LIMIT 1"
+        );
+        $stmtObraReq->execute([(int)$id_Req]);
+        $obraDeReq = $stmtObraReq->fetchColumn();
+        if ($obraDeReq === false) {
+            $data = ['error' => true, 'mensaje' => 'Requisición no encontrada.'];
+            break;
+        }
+        tf_require_obra_access($conexion, (int)$obraDeReq, $currentUser);
+
         $conexion->beginTransaction();
 
         $consulta = "SELECT `hojaRequisicion_id`

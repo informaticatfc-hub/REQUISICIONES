@@ -326,10 +326,10 @@ switch ($accion) {
                 log_estatusNuevo AS nuevo,
                 log_comentario   AS comentario,
                 log_userName     AS usuario,
-                log_fecha        AS fecha
+                log_createdAt    AS fecha
              FROM `hoja_estatus_log`
              WHERE `log_hojaId` = ?
-             ORDER BY `log_fecha` ASC'
+             ORDER BY `log_createdAt` ASC'
         );
         $stmt->execute([$idHojaInt]);
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);

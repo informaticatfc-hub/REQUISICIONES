@@ -54,8 +54,34 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 6:
-        $consulta = "UPDATE `provedores` 
-        SET 
+        $clabeEdit  = trim((string)($formValues['claveProv']      ?? ''));
+        $cuentaEdit = trim((string)($formValues['cuentaBancaria'] ?? ''));
+
+        // Validar que la nueva CLABE/cuenta no pertenezca a otro proveedor
+        $stmtDup = $conexion->prepare(
+            "SELECT `proveedor_id`, `proveedor_nombre`
+             FROM `provedores`
+             WHERE `proveedor_id` != ?
+               AND (
+                   (`proveedor_clabe` = ? AND `proveedor_clabe` != '')
+                   OR (`proveedor_numeroCuenta` = ? AND `proveedor_numeroCuenta` != '')
+               )
+             LIMIT 1"
+        );
+        $stmtDup->execute([(int)$id_prov, $clabeEdit, $cuentaEdit]);
+        $dup = $stmtDup->fetch(PDO::FETCH_ASSOC);
+        if ($dup) {
+            $data = array(
+                'ok' => false,
+                'duplicate' => true,
+                'proveedor_nombre' => $dup['proveedor_nombre'],
+                'proveedor_id' => (int)$dup['proveedor_id'],
+            );
+            break;
+        }
+
+        $consulta = "UPDATE `provedores`
+        SET
             `proveedor_nombre` = :nombre,
             `presiones_type` = :tipo,
             `proveedor_rfc` = :rfc,
@@ -68,25 +94,25 @@ switch ($accion) {
             `proveedor_email` = :email,
             `proveedor_telefono` = :telefono
         WHERE `proveedor_id` = :id";
-    
+
         $resultado = $conexion->prepare($consulta);
-        
+
         $resultado->bindParam(':nombre', $formValues['nombreProv']);
         $resultado->bindParam(':tipo', $formValues['typeProv']);
         $resultado->bindParam(':rfc', $formValues['RFCProv']);
-        $resultado->bindParam(':clabe', $formValues['claveProv']);
-        $resultado->bindParam(':cuenta', $formValues['cuentaBancaria']);
+        $resultado->bindParam(':clabe', $clabeEdit);
+        $resultado->bindParam(':cuenta', $cuentaEdit);
         $resultado->bindParam(':sucursal', $formValues['sucursalProv']);
         $resultado->bindParam(':referencia', $formValues['referenciaProv']);
         $resultado->bindParam(':tarjeta', $formValues['tarjetaProv']);
         $resultado->bindParam(':banco', $formValues['bancoProv']);
         $resultado->bindParam(':email', $formValues['correoProv']);
-        $resultado->bindParam(':telefono', $formValues['telefonoProv']);        
+        $resultado->bindParam(':telefono', $formValues['telefonoProv']);
         $resultado->bindParam(':id', $id_prov, PDO::PARAM_INT);
-        
+
         $resultado->execute();
-    
-        $data = 1;
+
+        $data = array('ok' => true);
         tf_audit_log($conexion, 'proveedores.edit', 'provedores', (int)$id_prov, array(
             'nombre' => $formValues['nombreProv'] ?? null,
             'rfc' => $formValues['RFCProv'] ?? null,

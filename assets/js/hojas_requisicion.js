@@ -17,44 +17,6 @@ function hojasReqApp() {
         clave: "",
         canReqEdit: !!(window.TF_LEGACY_PERMS && window.TF_LEGACY_PERMS.canReqEdit),
         canDireccion: !!(window.TF_LEGACY_PERMS && window.TF_LEGACY_PERMS.canDireccion),
-        initDataTable: function () {
-            if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.DataTable) return;
-            var table = window.jQuery('#example');
-            if (!table.length) return;
-            if (window.jQuery.fn.dataTable.isDataTable('#example')) {
-                table.DataTable().destroy();
-            }
-            table.DataTable({
-                "order": [],
-                "responsive": true,
-                "autoWidth": false,
-                "language": {
-                    "sProcessing": "Procesando...",
-                    "sLengthMenu": "Mostrar _MENU_ registros",
-                    "sZeroRecords": "No se encontraron resultados",
-                    "sEmptyTable": "Ningún dato disponible en esta tabla",
-                    "sInfo": "Mostrando registros del _START_ al _END_ de un total de _TOTAL_ registros",
-                    "sInfoEmpty": "Mostrando registros del 0 al 0 de un total de 0 registros",
-                    "sInfoFiltered": "(filtrado de un total de _MAX_ registros)",
-                    "sInfoPostFix": "",
-                    "sSearch": "Buscar:",
-                    "sUrl": "",
-                    "sInfoThousands": ",",
-                    "sLoadingRecords": "Cargando...",
-                    "oPaginate": {
-                        "sFirst": "Primero",
-                        "sLast": "Último",
-                        "sNext": "Siguiente",
-                        "sPrevious": "Anterior"
-                    },
-                    "oAria": {
-                        "sSortAscending": ": Activar para ordenar la columna de manera ascendente",
-                        "sSortDescending": ": Activar para ordenar la columna de manera descendente"
-                    }
-                }
-            });
-            window.jQuery('[data-toggle="tooltip"]').tooltip();
-        },
         ConsultarItemHoja: async function (idHoja) {
             localStorage.setItem("idHoja", idHoja);
             localStorage.setItem("validate", false);
@@ -72,9 +34,7 @@ function hojasReqApp() {
         listarHojas: async function (idRq) {
             try {
                 const response = await axios.post(url, { accion: 1, IdReq: idRq });
-                this.hojas = response.data;
-                console.log(this.hojas);
-                setTimeout(this.initDataTable.bind(this), 0);
+                this.hojas = Array.isArray(response.data) ? response.data : [];
             } catch (error) {
                 console.error("Error al obtener las hojas", error);
             }
@@ -182,9 +142,6 @@ function hojasReqApp() {
                         icon: "success",
                         title: "Elemento Eliminado correctamente"
                     });
-                    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.dataTable && window.jQuery.fn.dataTable.isDataTable('#example')) {
-                        window.jQuery('#example').DataTable().destroy();
-                    }
                     this.listarHojas(localStorage.getItem("idRequisicion"));
                 }
             }).catch(error =>{
@@ -195,94 +152,134 @@ function hojasReqApp() {
                 });
             });
         },
-        // C-M3: Duplicar hoja (copia la hoja con todos sus items con estatus NUEVO)
-        duplicarHoja: async function (idHoja) {
-            var confirm = await Swal.fire({
-                title: '¿Duplicar esta hoja?',
-                text: 'Se creará una copia de la hoja con todos sus ítems en estado NUEVO.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, duplicar',
-                cancelButtonText: 'Cancelar'
-            });
-            if (!confirm.isConfirmed) return;
+        // ---- ITF-3: Cotizaciones adjuntas ----
+        _cotHojaId: null,
+        abrirCotizaciones: function (hojaId, hojaNum) {
+            this._cotHojaId = hojaId;
+            document.getElementById('cotModalHojaNum').textContent = hojaNum || '';
 
-            const Toast = Swal.mixin({
-                toast: true,
-                position: 'bottom-start',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true
-            });
-            try {
-                const resp = await axios.post(url, { accion: 9, idHoja: idHoja });
-                if (resp.data && resp.data.status === 'ok') {
-                    Toast.fire({ icon: 'success', title: 'Hoja duplicada correctamente' });
-                    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.dataTable && window.jQuery.fn.dataTable.isDataTable('#example')) {
-                        window.jQuery('#example').DataTable().destroy();
-                    }
-                    this.listarHojas(localStorage.getItem('idRequisicion'));
-                } else {
-                    Toast.fire({ icon: 'error', title: 'Error al duplicar la hoja' });
-                }
-            } catch (e) {
-                console.error(e);
-                Toast.fire({ icon: 'error', title: 'Error al duplicar la hoja' });
-            }
-        },
-        // R-M2 / R-M3: Historial de estatus de una hoja (abre modal con timeline)
-        verHistorialHoja: async function (idHoja, numero) {
-            var modal = new bootstrap.Modal(document.getElementById('modalHistorialHoja'));
-            document.getElementById('histModalHojaNum').textContent = 'Hoja N° ' + numero;
-            document.getElementById('histModalLoading').classList.remove('d-none');
-            document.getElementById('histModalContent').classList.add('d-none');
+            // Mostrar zona de upload solo si el usuario puede editar
+            var upZone = document.getElementById('cotUploadZone');
+            if (upZone) upZone.classList.toggle('d-none', !this.canReqEdit);
+
+            document.getElementById('cotLoadingSpinner').classList.remove('d-none');
+            document.getElementById('cotListaContainer').classList.add('d-none');
+            document.getElementById('cotUploadMsg') && (document.getElementById('cotUploadMsg').classList.add('d-none'));
+            if (document.getElementById('cotNombreInput')) document.getElementById('cotNombreInput').value = '';
+            if (document.getElementById('cotFileInput'))  document.getElementById('cotFileInput').value  = '';
+
+            // Exponer referencia al contexto para el botón Subir (fuera de Alpine)
+            window._cotApp = this;
+
+            var modal = new bootstrap.Modal(document.getElementById('modalCotizaciones'));
             modal.show();
-
-            try {
-                var resp = await axios.post(url, { accion: 10, idHoja: idHoja });
-                var rows = resp.data || [];
-                var timeline = document.getElementById('histModalTimeline');
-                var empty   = document.getElementById('histModalEmpty');
-
-                var colorMap = {
-                    'NUEVO': 'secondary', 'PENDIENTE': 'warning', 'REVISION': 'warning',
-                    'LIGADA': 'info', 'RECHAZADA': 'danger', 'AUTORIZADA': 'primary', 'PAGADA': 'success'
-                };
-
-                if (rows.length === 0) {
-                    timeline.innerHTML = '';
-                    empty.classList.remove('d-none');
-                } else {
-                    empty.classList.add('d-none');
-                    timeline.innerHTML = rows.map(function (r) {
-                        var color = colorMap[r.nuevo] || 'secondary';
-                        var fecha = r.fecha ? r.fecha.substring(0, 16).replace('T', ' ') : '—';
-                        var antes = r.antes ? ('<span class="badge bg-' + (colorMap[r.antes] || 'secondary') + '">' + r.antes + '</span> → ') : '';
-                        return '<div class="d-flex gap-3 mb-3 align-items-start">' +
-                            '<div class="d-flex flex-column align-items-center">' +
-                            '<span class="badge bg-' + color + ' fs-6 rounded-circle p-2"><i class="bi bi-circle-fill" style="font-size:.5rem"></i></span>' +
-                            '</div>' +
-                            '<div class="flex-grow-1">' +
-                            '<div class="d-flex flex-wrap align-items-center gap-2">' +
-                            antes +
-                            '<span class="badge bg-' + color + '">' + r.nuevo + '</span>' +
-                            '<small class="text-muted ms-auto">' + fecha + '</small>' +
-                            '</div>' +
-                            (r.usuario ? '<small class="text-muted">Por: <strong>' + r.usuario + '</strong></small>' : '') +
-                            (r.comentario ? '<p class="mb-0 mt-1 small fst-italic">' + r.comentario + '</p>' : '') +
-                            '</div>' +
-                            '</div>';
-                    }).join('<hr class="my-1">');
-                }
-            } catch (e) {
-                console.error(e);
-                document.getElementById('histModalTimeline').innerHTML =
-                    '<p class="text-danger">Error al cargar el historial.</p>';
-            } finally {
-                document.getElementById('histModalLoading').classList.add('d-none');
-                document.getElementById('histModalContent').classList.remove('d-none');
-            }
+            this._cargarCotizaciones();
         },
+        _cargarCotizaciones: function () {
+            var self = this;
+            axios.post('../api/crud_cotizaciones.php', { accion: 1, hoja_id: self._cotHojaId })
+                .then(function (r) {
+                    var lista = r.data || [];
+                    var ul = document.getElementById('cotLista');
+                    ul.innerHTML = '';
+                    if (!lista.length) {
+                        document.getElementById('cotEmptyMsg').classList.remove('d-none');
+                    } else {
+                        document.getElementById('cotEmptyMsg').classList.add('d-none');
+                        lista.forEach(function (c) {
+                            var kb = c.cotizacion_size ? (c.cotizacion_size / 1024).toFixed(0) + ' KB' : '';
+                            var fecha = c.cotizacion_fechaSubida ? c.cotizacion_fechaSubida.slice(0, 10) : '';
+                            var li = document.createElement('li');
+                            li.className = 'list-group-item d-flex justify-content-between align-items-center gap-2';
+                            li.innerHTML =
+                                '<span class="flex-grow-1">'
+                                    + '<i class="bi bi-file-earmark-pdf text-danger me-1"></i>'
+                                    + '<strong>' + self._escHtml(c.cotizacion_nombre) + '</strong>'
+                                    + (kb ? ' <span class="text-muted small">(' + kb + ')</span>' : '')
+                                    + (fecha ? ' <span class="text-muted small ms-2">' + fecha + '</span>' : '')
+                                + '</span>'
+                                + '<div class="btn-group btn-group-sm">'
+                                    + '<a href="../api/crud_cotizaciones.php?accion=4&cotizacion_id=' + c.cotizacion_id + '" target="_blank" class="btn btn-outline-primary" title="Ver / Imprimir"><i class="bi bi-eye"></i></a>'
+                                    + (self.canReqEdit ? '<button class="btn btn-outline-danger" title="Eliminar" onclick="window._cotApp && window._cotApp._eliminarCotizacion(' + c.cotizacion_id + ')"><i class="bi bi-trash"></i></button>' : '')
+                                + '</div>';
+                            ul.appendChild(li);
+                        });
+                    }
+                    document.getElementById('cotLoadingSpinner').classList.add('d-none');
+                    document.getElementById('cotListaContainer').classList.remove('d-none');
+                })
+                .catch(function (e) {
+                    console.error('Cotizaciones load error:', e);
+                    document.getElementById('cotLoadingSpinner').classList.add('d-none');
+                    document.getElementById('cotListaContainer').classList.remove('d-none');
+                    document.getElementById('cotEmptyMsg').textContent = 'Error al cargar cotizaciones.';
+                    document.getElementById('cotEmptyMsg').classList.remove('d-none');
+                });
+        },
+        _eliminarCotizacion: function (cotId) {
+            var self = this;
+            if (!confirm('¿Eliminar esta cotización? Esta acción no se puede deshacer.')) return;
+            axios.post('../api/crud_cotizaciones.php', { accion: 3, cotizacion_id: cotId })
+                .then(function (r) {
+                    if (r.data && r.data.ok) {
+                        self._cargarCotizaciones();
+                    } else {
+                        alert('No se pudo eliminar la cotización.');
+                    }
+                })
+                .catch(function () { alert('Error de conexión al eliminar.'); });
+        },
+        subirCotizacion: function () {
+            var self = this;
+            var nombreInput = document.getElementById('cotNombreInput');
+            var fileInput   = document.getElementById('cotFileInput');
+            var msgDiv      = document.getElementById('cotUploadMsg');
+            if (!fileInput || !fileInput.files.length) {
+                self._cotMsg('Selecciona un archivo PDF.', 'warning');
+                return;
+            }
+            var file = fileInput.files[0];
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                self._cotMsg('Solo se aceptan archivos PDF.', 'danger');
+                return;
+            }
+            var fd = new FormData();
+            fd.append('accion', 2);
+            fd.append('hoja_id', self._cotHojaId);
+            fd.append('cotizacion', file);
+            fd.append('nombre', (nombreInput && nombreInput.value.trim()) || '');
+            var subirBtn = document.getElementById('cotSubirBtn');
+            if (subirBtn) subirBtn.disabled = true;
+            self._cotMsg('Subiendo…', 'info');
+            axios.post('../api/crud_cotizaciones.php', fd, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            }).then(function (r) {
+                if (r.data && r.data.ok) {
+                    if (nombreInput) nombreInput.value = '';
+                    if (fileInput)   fileInput.value   = '';
+                    self._cotMsg('Cotización adjuntada correctamente.', 'success');
+                    self._cargarCotizaciones();
+                } else {
+                    self._cotMsg(r.data && r.data.error ? r.data.error : 'Error al subir.', 'danger');
+                }
+            }).catch(function (e) {
+                var msg = (e.response && e.response.data && e.response.data.error) || 'Error de red al subir.';
+                self._cotMsg(msg, 'danger');
+            }).finally(function () {
+                if (subirBtn) subirBtn.disabled = false;
+            });
+        },
+        _cotMsg: function (texto, tipo) {
+            var d = document.getElementById('cotUploadMsg');
+            if (!d) return;
+            d.className = 'mt-2 small alert alert-' + tipo + ' py-1 px-2';
+            d.textContent = texto;
+            d.classList.remove('d-none');
+        },
+        _escHtml: function (str) {
+            return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        },
+        // ---- Fin ITF-3 ----
         get montoTotalRequisicion() {
             return this.hojas.reduce(function (acc, h) {
                 return acc + parseFloat(h.hojaRequisicion_total || 0);
