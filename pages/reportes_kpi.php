@@ -212,67 +212,6 @@ include __DIR__ . '/../includes/layout_top.php';
 <div id="AppKpiDireccion" class="tf-page-inner" x-data="reportesKpiApp()" x-init="init()" x-cloak>
 <div class="tf-page-content">
 
-<<<<<<< Updated upstream
-<head>
-    <meta charset="utf8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <link rel="icon" type="image/jpg" href="../images/TheFuenteIcon.png" />
-    <link rel="stylesheet" href="../assets/lib/sweetalert/sweetalert2.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../assets/lib/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../assets/css/main.css">
-    <style>
-        .director-top-layout .app-sidebar { display: none !important; }
-        .director-top-layout .app-main { left: 0 !important; }
-        .director-shortcuts {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 24px;
-            background: #fff;
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: calc(var(--topbar-h) + 42px);
-            z-index: 89;
-        }
-        .kpi-filter-box {
-            background: #fff;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 14px;
-            margin-bottom: 14px;
-            box-shadow: var(--shadow-xs);
-        }
-        .kpi-table-wrap {
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: auto;
-            background: #fff;
-            box-shadow: var(--shadow-xs);
-        }
-        .kpi-table {
-            min-width: 980px;
-            margin: 0;
-        }
-        .kpi-table thead th {
-            position: sticky;
-            top: 0;
-            z-index: 1;
-            background: #eef2ff !important;
-            color: #1e293b !important;
-            font-size: 0.74rem;
-            border-bottom: 1px solid #cbd5e1 !important;
-        }
-        .kpi-table td {
-            font-size: 0.84rem;
-            vertical-align: middle;
-        }
-    </style>
-    <title>Reportes KPI - Direccion</title>
-</head>
-=======
     <!-- ══ PAGE HEADER ═══════════════════════════════════════════ -->
     <header class="tf-page-header">
         <div>
@@ -281,7 +220,6 @@ include __DIR__ . '/../includes/layout_top.php';
             <p class="tf-page-lead">Desglose profesional de gastos por fecha, proveedor y obra.</p>
         </div>
     </header>
->>>>>>> Stashed changes
 
     <!-- ══ FILTER PANEL ══════════════════════════════════════════ -->
     <div class="tf-card mb-4">
@@ -698,7 +636,6 @@ $tf_use_vue       = false;
 $tf_use_axios     = true;
 $tf_extra_scripts =
     '<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>' .
-    '<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js" integrity="sha384-NaWTHo/8YCBYJ59830LTz/P4aQZK1sS0SneOgAvhsIl3zBu8r9RevNg5lHCHAuQ/" crossorigin="anonymous"></script>' .
     '<script src="../assets/lib/exceljs/exceljs.min.js"></script>' .
     '<script src="../assets/lib/jspdf/jspdf.umd.min.js"></script>' .
     '<script src="../assets/lib/jspdf/jspdf.plugin.autotable.min.js"></script>' .

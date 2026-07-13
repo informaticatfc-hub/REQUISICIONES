@@ -11,7 +11,6 @@ $__legacyRole = strtolower((string)($__legacyUser['role']['code'] ?? ''));
 $__legacyDirAcc = tf_user_has_direction_access($__legacyUser) ? 1 : 0;
 $__legacyIsDirector = in_array($__legacyRole, ['director', 'direccion', 'admin'], true) || $__legacyDirAcc === 1;
 
-<<<<<<< Updated upstream
 $legacy_show_actions = isset($legacy_show_actions) ? (bool)$legacy_show_actions : true;
 
 if (!isset($legacy_actions) || !is_array($legacy_actions) || !count($legacy_actions)) {
@@ -34,45 +33,6 @@ if (!isset($legacy_actions) || !is_array($legacy_actions) || !count($legacy_acti
         ];
     }
 }
-=======
-$__legacyHasAll = in_array('*', $__legacyPerms, true);
-$__legacyCanObras = $__legacyHasAll || in_array('obras.view', $__legacyPerms, true);
-$__legacyCanRequisiciones = $__legacyHasAll || in_array('requisiciones.view', $__legacyPerms, true);
-$__legacyCanPresiones = $__legacyHasAll || in_array('presiones.view', $__legacyPerms, true);
-$__legacyCanCatalogos = $__legacyHasAll || in_array('catalogos.view', $__legacyPerms, true);
-$__legacyCanDireccion = $__legacyHasAll
-    || in_array('direccion.view', $__legacyPerms, true)
-    || in_array('presiones.authorize', $__legacyPerms, true)
-    || $__legacyIsDirector;
-
-if (!function_exists('tf_legacy_nav_active')) {
-    function tf_legacy_nav_active($current, array $files) {
-        return in_array($current, $files, true) ? 'is-active' : '';
-    }
-}
-
-$legacy_links = [
-    ['label' => 'Inicio', 'href' => './index.php', 'active' => ['index.php']],
-];
-
-if ($__legacyCanObras) {
-    $legacy_links[] = ['label' => 'Obras', 'href' => './obras.php', 'active' => ['obras.php']];
-}
-
-// Solicitud funcional: ocultar modulos Requisiciones y Presiones en navbar legacy.
-
-if ($__legacyCanCatalogos) {
-    $legacy_links[] = ['label' => 'Catalogos', 'href' => './menu_catalago.php', 'active' => ['menu_catalago.php', 'catalago.php', 'bancos.php', 'agregar_proveedor.php', 'proveedores.php']];
-}
-
-if ($__legacyCanDireccion) {
-    $legacy_links[] = ['label' => 'Direccion', 'href' => './direccion.php', 'active' => ['direccion.php', 'reportes_kpi.php']];
-}
-
-if ($__legacyShowAdmin) {
-    $legacy_links[] = ['label' => 'Personal', 'href' => './admin.php', 'active' => ['admin.php']];
-}
->>>>>>> Stashed changes
 ?>
 <nav class="navbar app-navbar">
     <div class="container-fluid legacy-navbar-shell">

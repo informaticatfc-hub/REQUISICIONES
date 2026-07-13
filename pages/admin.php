@@ -35,10 +35,7 @@ $canCreate = tf_has_permission('admin.users.create', $__user);
 $canEdit   = tf_has_permission('admin.users.edit',   $__user);
 $canRole   = tf_has_permission('admin.roles.manage', $__user);
 $canAudit  = tf_has_permission('admin.audit.view',   $__user);
-<<<<<<< Updated upstream
-=======
 $canAssignObra = tf_user_has_direction_access($__user);
->>>>>>> Stashed changes
 
 $tf_subbar_extra = $canCreate
     ? '<div class="tf-subbar-actions">
@@ -186,15 +183,12 @@ include __DIR__ . '/../includes/layout_top.php';
                             <?php endif; ?>
                         </td>
                         <td>
-<<<<<<< Updated upstream
-=======
                             <span x-show="u.user_obra_nombre" class="badge bg-primary-subtle text-primary-emphasis">
                                 <i class="bi bi-building me-1"></i><span x-text="u.user_obra_nombre"></span>
                             </span>
                             <small x-show="!u.user_obra_nombre" class="text-muted">Sin obra</small>
                         </td>
                         <td>
->>>>>>> Stashed changes
                             <span class="tf-status"
                                   x-bind:class="u.user_estatus === 'ACTIVO' ? 'tf-status-active' : 'tf-status-inactive'">
                                 <span x-text="u.user_estatus"></span>
@@ -209,15 +203,12 @@ include __DIR__ . '/../includes/layout_top.php';
                                     x-on:click="openEdit(u)" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </button>
-<<<<<<< Updated upstream
-=======
                             <?php if ($canAssignObra): ?>
                             <button type="button" class="tf-btn tf-btn-ghost tf-btn-sm"
                                     x-on:click="openAssignObra(u)" title="Asignar obra">
                                 <i class="bi bi-building-add"></i>
                             </button>
                             <?php endif; ?>
->>>>>>> Stashed changes
                             <button type="button" class="tf-btn tf-btn-sm"
                                     x-bind:class="u.user_estatus === 'ACTIVO' ? 'tf-btn-danger' : 'tf-btn-success'"
                                     x-on:click="toggleStatus(u)"
@@ -228,14 +219,9 @@ include __DIR__ . '/../includes/layout_top.php';
                             <?php endif; ?>
                         </td>
                     </tr>
-<<<<<<< Updated upstream
-                    <tr v-if="!filteredUsers.length">
-                        <td colspan="6" class="text-center text-muted py-4">
-=======
                     </template>
                     <tr x-show="!filteredUsers.length">
                         <td colspan="7" class="text-center text-muted py-4">
->>>>>>> Stashed changes
                             <i class="bi bi-inbox" style="font-size:1.5rem"></i>
                             <div>Sin resultados</div>
                         </td>
@@ -570,137 +556,6 @@ include __DIR__ . '/../includes/layout_top.php';
         </div>
     </div>
 
-<<<<<<< Updated upstream
-</div>
-
-<?php
-$tf_use_datatables = false;
-$tf_inline_script = <<<JS
-    var url = "../api/crud_admin.php";
-    var __canAudit = JSON.parse('<?= $canAudit ? 'true' : 'false' ?>');
-
-    var app = new Vue({
-        el: "#tfAdmin",
-        data: {
-            users: [],
-            roles: [],
-            audit: [],
-            filterText: "",
-            editing: false,
-            saving: false,
-            form: {
-                user_id: null,
-                user_nameUser: "",
-                user_name: "",
-                user_email: "",
-                user_role_id: null,
-                user_password: ""
-            },
-            modal: null
-        },
-        computed: {
-            countActivos:   function () { return this.users.filter(function(u){return u.user_estatus === 'ACTIVO';}).length; },
-            countInactivos: function () { return this.users.filter(function(u){return u.user_estatus !== 'ACTIVO';}).length; },
-            filteredUsers: function () {
-                var q = (this.filterText || "").trim().toLowerCase();
-                if (!q) return this.users;
-                return this.users.filter(function(u){
-                    return (u.user_nameUser || "").toLowerCase().indexOf(q) !== -1
-                        || (u.user_name     || "").toLowerCase().indexOf(q) !== -1
-                        || (u.role_nombre   || "").toLowerCase().indexOf(q) !== -1
-                        || (u.user_email    || "").toLowerCase().indexOf(q) !== -1;
-                });
-            }
-        },
-        methods: {
-            loadAll: function () {
-                axios.post(url, { accion: 1 }).then(function(r){ this.users = r.data || []; }.bind(this));
-                axios.post(url, { accion: 2 }).then(function(r){ this.roles = r.data || []; }.bind(this));
-                if (__canAudit) this.loadAudit();
-            },
-            loadAudit: function () {
-                axios.post(url, { accion: 7, limite: 50 }).then(function(r){
-                    this.audit = r.data || [];
-                }.bind(this));
-            },
-            openCreate: function () {
-                this.editing = false;
-                this.form = {
-                    user_id: null, user_nameUser: "", user_name: "", user_email: "",
-                    user_role_id: this.roles.length ? this.roles[this.roles.length - 1].role_id : null,
-                    user_password: ""
-                };
-                this.modal.show();
-            },
-            openEdit: function (u) {
-                this.editing = true;
-                this.form = {
-                    user_id: u.user_id,
-                    user_nameUser: u.user_nameUser,
-                    user_name: u.user_name || "",
-                    user_email: u.user_email || "",
-                    user_role_id: u.user_role_id,
-                    user_password: ""
-                };
-                this.modal.show();
-            },
-            saveUser: function () {
-                if (this.saving) return;
-                this.saving = true;
-                var f = this.form;
-                var req = this.editing
-                    ? { accion: 4, user_id: f.user_id, user_name: f.user_name, user_email: f.user_email, user_password: f.user_password }
-                    : { accion: 3, user_nameUser: f.user_nameUser, user_name: f.user_name, user_email: f.user_email, user_role_id: f.user_role_id, user_password: f.user_password };
-                axios.post(url, req)
-                    .then(function () {
-                        Swal.fire({icon:'success', title:'Guardado', timer:1500, showConfirmButton:false, toast:true, position:'top-end'});
-                        this.modal.hide();
-                        this.loadAll();
-                    }.bind(this))
-                    .catch(function (err) {
-                        var msg = (err.response && err.response.data && err.response.data.message) || 'Error al guardar';
-                        Swal.fire({icon:'error', title:'Error', text: msg});
-                    })
-                    .finally(function () { this.saving = false; }.bind(this));
-            },
-            changeRole: function (u, newRoleId) {
-                axios.post(url, { accion: 5, user_id: u.user_id, user_role_id: parseInt(newRoleId, 10) })
-                    .then(function () {
-                        Swal.fire({icon:'success', title:'Rol actualizado', timer:1200, showConfirmButton:false, toast:true, position:'top-end'});
-                        this.loadAll();
-                    }.bind(this))
-                    .catch(function (err) {
-                        var msg = (err.response && err.response.data && err.response.data.message) || 'No se pudo cambiar el rol';
-                        Swal.fire({icon:'error', title:'Error', text: msg});
-                    });
-            },
-            toggleStatus: function (u) {
-                var nuevo = u.user_estatus === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
-                Swal.fire({
-                    title: nuevo === 'INACTIVO' ? 'Desactivar usuario?' : 'Activar usuario?',
-                    text: u.user_nameUser, icon: 'question',
-                    showCancelButton: true, confirmButtonText: 'Si, ' + (nuevo === 'INACTIVO' ? 'desactivar' : 'activar')
-                }).then(function (res) {
-                    if (!res.isConfirmed) return;
-                    axios.post(url, { accion: 6, user_id: u.user_id, user_estatus: nuevo })
-                        .then(function () {
-                            Swal.fire({icon:'success', title:'Listo', timer:1000, showConfirmButton:false, toast:true, position:'top-end'});
-                            this.loadAll();
-                        }.bind(this))
-                        .catch(function (err) {
-                            var msg = (err.response && err.response.data && err.response.data.message) || 'Error';
-                            Swal.fire({icon:'error', title:'Error', text: msg});
-                        });
-                }.bind(this));
-            }
-        },
-        mounted: function () {
-            this.modal = new bootstrap.Modal(document.getElementById('userModal'));
-            this.loadAll();
-        }
-    });
-JS;
-=======
     <div class="modal fade" id="obraModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" style="border-radius:14px;border:1px solid var(--tf-border)">
@@ -764,7 +619,6 @@ $tf_use_vue = false;
 $tf_extra_head = '<style>[x-cloak]{display:none !important;}</style>';
 $tf_extra_scripts = '<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>'
     . '<script src="../assets/js/admin.js?v=fase08u"></script>';
->>>>>>> Stashed changes
 
 include __DIR__ . '/../includes/layout_bottom.php';
 ?>

@@ -50,7 +50,32 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 4:
-        $consulta = "INSERT INTO `provedores` (`proveedor_id`, `proveedor_nombre`, `presiones_type`, `proveedor_rfc`, `proveedor_clabe`, `proveedor_numeroCuenta`, `proveedor_sucursal`, `proveedor_refBanco`, `presiones_tarjetaBanco`, `proveedor_banco`, `proveedor_email`, `proveedor_telefono`, `proveedor_estatus`) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO')";
+        // Validar duplicados por CLABE o número de cuenta antes de insertar
+        $stmtDup = $conexion->prepare(
+            "SELECT `proveedor_id`, `proveedor_nombre`
+             FROM `provedores`
+             WHERE (`proveedor_clabe` = ? AND `proveedor_clabe` != '')
+                OR (`proveedor_numeroCuenta` = ? AND `proveedor_numeroCuenta` != '')
+             LIMIT 1"
+        );
+        $stmtDup->execute([$clabe, $cuenta]);
+        $dup = $stmtDup->fetch(PDO::FETCH_ASSOC);
+        if ($dup) {
+            $data = array(
+                'ok' => false,
+                'duplicate' => true,
+                'proveedor_nombre' => $dup['proveedor_nombre'],
+                'proveedor_id' => (int)$dup['proveedor_id'],
+            );
+            break;
+        }
+
+        $consulta = "INSERT INTO `provedores` (
+            `proveedor_id`, `proveedor_nombre`, `presiones_type`, `proveedor_rfc`,
+            `proveedor_clabe`, `proveedor_numeroCuenta`, `proveedor_sucursal`,
+            `proveedor_refBanco`, `presiones_tarjetaBanco`, `proveedor_banco`,
+            `proveedor_email`, `proveedor_telefono`, `proveedor_estatus`
+        ) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO')";
         $resultado = $conexion->prepare($consulta);
         $resultado->execute([$nombre, $tipoProv, $rfc, $clabe, $cuenta, $sucursal, $referencia, $tarjeta, $banco, $correo, $telefono]);
         $newId = (int)$conexion->lastInsertId();

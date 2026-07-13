@@ -1,0 +1,12 @@
+# Datos sensibles — NUNCA versionar en repositorio publico
+# Dumps de la base de datos de produccion (hashes de contraseñas, datos reales)
+DataBase/
+*.sql.gz
+backup_*.sql
+
+# Archivos subidos por usuarios (cotizaciones reales)
+uploads/
+
+# Entorno local
+.env
+*.local.php
