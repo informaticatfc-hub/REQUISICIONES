@@ -41,7 +41,7 @@ if (
     in_array('finanzas.pagar', $perms, true) ||
     in_array('*', $perms, true)
 ) {
-    $st = $pdo->prepare("SELECT COUNT(*) FROM `presiones` WHERE `presiones_estatus` = 'AUTORIZADA'");
+    $st = $pdo->prepare("SELECT COUNT(*) FROM `presiones` WHERE `presiones_estatus` = 'AUTORIZADO'");
     $st->execute();
     $pendPago = (int)$st->fetchColumn();
 }

@@ -90,9 +90,10 @@ if ($Usuario === '' || $Contrasena === '') {
 }
 
 // ── Rate limiting: máx. 5 intentos fallidos por IP en 15 minutos ─────────────
-$clientIp = (string)($_SERVER['HTTP_X_FORWARDED_FOR']
-    ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]
-    : ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'));
+$forwardedFor = (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? '');
+$clientIp = $forwardedFor !== ''
+    ? explode(',', $forwardedFor)[0]
+    : (string)($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
 $clientIp = trim($clientIp);
 
 $rateLimitActive = false;

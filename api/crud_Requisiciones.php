@@ -276,7 +276,6 @@ switch ($accion) {
                 `requisicion_total`, `requisicion_estatus`
             ) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, '0', 'ABIERTO')";
             $resultado = $conexion->prepare($consulta);
-            $resultado = $conexion->prepare($consulta);
             $resultado->execute(array(
                 $clave,
                 $numeroRequisicion,
