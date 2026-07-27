@@ -35,6 +35,10 @@ $currentUser = api_get_current_user($conexion);
 
 switch ($accion) {
     case 1:
+        // La hoja debe traer al menos un item valido
+        if (!is_array($datos) || count($datos) === 0) {
+            api_json_error('La hoja debe incluir al menos un item', 422);
+        }
          try {
         // Validar que la requisición pertenece a una obra accesible por el usuario
         $stmtObraReq = $conexion->prepare(
@@ -199,6 +203,25 @@ switch ($accion) {
             ]);
         }
 
+        // 5) Total calculado en SERVIDOR a partir de los items insertados
+        //    (el Total del cliente solo se usa como referencia inicial).
+        $consulta = "SELECT COALESCE(SUM(ROUND((`itemRequisicion_cantidad` * `itemRequisicion_precio`)
+                + `itemRequisicion_iva` - `itemRequisicion_retenciones`, 2)), 0)
+            FROM `itemrequisicion` WHERE `itemRequisicion_idHoja` = :id_hoja";
+        $resultado = $conexion->prepare($consulta);
+        $resultado->bindValue(':id_hoja', $id_hoja, PDO::PARAM_INT);
+        $resultado->execute();
+        $totalServidor = round((float)$resultado->fetchColumn(), 2);
+
+        $consulta = "UPDATE `hojasrequisicion`
+            SET `hojaRequisicion_total` = :total, `hojarequisicion_adeudo` = :adeudo
+            WHERE `hojaRequisicion_id` = :id_hoja";
+        $resultado = $conexion->prepare($consulta);
+        $resultado->bindValue(':total', $totalServidor, PDO::PARAM_STR);
+        $resultado->bindValue(':adeudo', $totalServidor, PDO::PARAM_STR);
+        $resultado->bindValue(':id_hoja', $id_hoja, PDO::PARAM_INT);
+        $resultado->execute();
+
         $conexion->commit();
 
         $data = $id_hoja;
@@ -226,10 +249,14 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 3:
-        // CORREGIDO: Solo proveedores ACTIVOS, ordenados por nombre
-        $consulta = "SELECT `proveedor_id`,`proveedor_nombre` 
-                     FROM `provedores` 
-                     WHERE `proveedor_estatus` = 'ACTIVO' 
+        // Solo proveedores ACTIVOS, ordenados por nombre. Incluye RFC/CLABE y
+        // datos bancarios para que el buscador (nueva_hoja.js) pueda mostrarlos
+        // en la lista y auto-rellenar el formulario sin una segunda petición.
+        $consulta = "SELECT `proveedor_id`, `proveedor_nombre`, `proveedor_rfc`, `proveedor_clabe`,
+                     `proveedor_numeroCuenta`, `proveedor_sucursal`, `proveedor_refBanco`,
+                     `proveedor_banco`, `proveedor_email`, `proveedor_telefono`, `presiones_tarjetaBanco`
+                     FROM `provedores`
+                     WHERE `proveedor_estatus` = 'ACTIVO'
                      ORDER BY `proveedor_nombre`";
         $resultado = $conexion->prepare($consulta);
         $resultado->execute();
@@ -252,9 +279,11 @@ switch ($accion) {
         $data = array($currentUser);
         break;
     case 6:
-        $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO' ORDER BY `obras_nombre`";
+        // Solo obras dentro del alcance del usuario (consistente con crud_Presiones/crud_hojas)
+        $scope = tf_scope_obras_query($conexion, $currentUser);
+        $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO'" . $scope['sql'] . " ORDER BY `obras_nombre`";
         $resultado = $conexion->prepare($consulta);
-        $resultado->execute();
+        $resultado->execute($scope['params']);
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
 }

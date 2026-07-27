@@ -32,6 +32,8 @@
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
+require_once __DIR__ . '/lib/ApiClient.php';
+
 $BASE = getenv('TF_BASE_URL') ?: 'http://127.0.0.1:8099';
 $DB_HOST = getenv('DB_HOST') ?: '127.0.0.1';
 $DB_NAME = getenv('DB_NAME') ?: 'tfc_test';
@@ -65,61 +67,6 @@ function check($cond, $label, $detail = '')
     } else {
         $FAIL++;
         echo "  [FALLA] $label" . ($detail !== '' ? " -- $detail" : '') . "\n";
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Cliente HTTP con cookies + CSRF (curl)
-// ---------------------------------------------------------------------------
-class ApiClient
-{
-    private $base;
-    private $cookieFile;
-    public $csrf = '';
-
-    public function __construct($base)
-    {
-        $this->base = rtrim($base, '/');
-        $this->cookieFile = tempnam(sys_get_temp_dir(), 'tfcook');
-    }
-
-    public function post($path, array $payload, $withCsrf = true)
-    {
-        $ch = curl_init($this->base . $path);
-        $headers = ['Content-Type: application/json', 'Accept: application/json'];
-        if ($withCsrf && $this->csrf !== '') {
-            $headers[] = 'X-CSRF-Token: ' . $this->csrf;
-        }
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_COOKIEJAR => $this->cookieFile,
-            CURLOPT_COOKIEFILE => $this->cookieFile,
-            CURLOPT_TIMEOUT => 15,
-        ]);
-        $body = curl_exec($ch);
-        $status = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        $err = curl_error($ch);
-        curl_close($ch);
-        if ($body === false) {
-            return [0, ['curl_error' => $err]];
-        }
-        $decoded = json_decode($body, true);
-        return [$status, is_array($decoded) ? $decoded : ['raw' => $body]];
-    }
-
-    public function login($user, $password)
-    {
-        list($status, $data) = $this->post('/api/LoginAcces.php', [
-            'user' => $user,
-            'password' => $password,
-        ], false);
-        if (($data['bandera'] ?? '') === 'true') {
-            $this->csrf = (string)($data['csrf'] ?? '');
-        }
-        return [$status, $data];
     }
 }
 

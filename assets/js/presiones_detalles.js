@@ -18,44 +18,6 @@ function presionDetailApp() {
         canClosePresion: false,
         comentarioDirector: "",
         savingComentario: false,
-        initDataTable: function () {
-            if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.DataTable) return;
-            var table = window.jQuery('#example');
-            if (!table.length) return;
-            if (window.jQuery.fn.dataTable.isDataTable('#example')) {
-                table.DataTable().destroy();
-            }
-            table.DataTable({
-                "order": [],
-                "responsive": true,
-                "autoWidth": false,
-                "language": {
-                    "sProcessing": "Procesando...",
-                    "sLengthMenu": "Mostrar _MENU_ registros",
-                    "sZeroRecords": "No se encontraron resultados",
-                    "sEmptyTable": "Ningún dato disponible en esta tabla",
-                    "sInfo": "Mostrando registros del _START_ al _END_ de un total de _TOTAL_ registros",
-                    "sInfoEmpty": "Mostrando registros del 0 al 0 de un total de 0 registros",
-                    "sInfoFiltered": "(filtrado de un total de _MAX_ registros)",
-                    "sInfoPostFix": "",
-                    "sSearch": "Buscar:",
-                    "sUrl": "",
-                    "sInfoThousands": ",",
-                    "sLoadingRecords": "Cargando...",
-                    "oPaginate": {
-                        "sFirst": "Primero",
-                        "sLast": "Último",
-                        "sNext": "Siguiente",
-                        "sPrevious": "Anterior"
-                    },
-                    "oAria": {
-                        "sSortAscending": ": Activar para ordenar la columna de manera ascendente",
-                        "sSortDescending": ": Activar para ordenar la columna de manera descendente"
-                    }
-                }
-            });
-            window.jQuery('[data-toggle="tooltip"]').tooltip();
-        },
         consultarUsuario: async function () {
             // Fase 5: identidad por sesion server-side (sin localStorage.NameUser)
             try {
@@ -85,7 +47,6 @@ function presionDetailApp() {
                 const response = await axios.post(url, { accion: 3, idPresion: IdPresion, dia: this.dia, semana: this.semana });
                 this.presiones = response.data;
                 console.log(this.presiones);
-                setTimeout(this.initDataTable.bind(this), 0);
             } catch (error) {
                 console.error("Error al cargar las Presiones:",error);
             }
@@ -181,10 +142,7 @@ function presionDetailApp() {
               //alert("Agregado"+id+parcial+" "+fecha+" "+banco);
               var estatus = "PAGADO";
               axios.post(url, { accion: 5, idHoja:idHoja , fechaPago: fecha, bancoPago: banco, status: estatus}).then(response => {
-                                if (window.jQuery && window.jQuery.fn && window.jQuery.fn.dataTable && window.jQuery.fn.dataTable.isDataTable('#example')) {
-                                        window.jQuery('#example').DataTable().destroy();
-                                }
-                this.cargarDatosPresion(localStorage.getItem("IdPresion"));  
+                this.cargarDatosPresion(localStorage.getItem("IdPresion"));
                 console.log(response.data);
               });
         },
@@ -450,14 +408,14 @@ function presionDetailApp() {
             this.descargarBufferExcel(buffer, filename);
         },
         cerrarPresion: async function () {
-            const swalWithBootstrapButtons = await Swal.mixin({
+            const swalWithBootstrapButtons = Swal.mixin({
                 customClass: {
                     confirmButton: "btn btn-success",
                     cancelButton: "btn btn-danger"
                 },
                 buttonsStyling: true
             });
-            swalWithBootstrapButtons.fire({
+            const result = await swalWithBootstrapButtons.fire({
                 title: "¿Quieres cerrar esta presion?",
                 text: "Esta operacion no se puede revertir",
                 icon: "info",
@@ -465,21 +423,21 @@ function presionDetailApp() {
                 confirmButtonText: "SI",
                 cancelButtonText: "NO",
                 reverseButtons: false
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    this.closePresion(localStorage.getItem("IdPresion"));
-                    swalWithBootstrapButtons.fire({
-                        title: "CARRADA",
-                        text: "La presion a sido cerrada con exito.",
-                        icon: "success"
-                    }).then(() => {
-                        window.location.reload();
-                    });
-                } 
             });
+            if (!result.isConfirmed) return;
+            // Antes no se esperaba closePresion() y la pagina podia recargar
+            // ANTES de que el POST terminara -> el estatus seguia PENDIENTE
+            // tras el reload y el boton "Cerrar y Guardar Presion" no desaparecia.
+            await this.closePresion(localStorage.getItem("IdPresion"));
+            await swalWithBootstrapButtons.fire({
+                title: "CERRADA",
+                text: "La presion ha sido cerrada con exito.",
+                icon: "success"
+            });
+            window.location.reload();
         },
         closePresion: function (idPresion) {
-            axios.post(url, { accion: 7, idPresion: idPresion, Presiones: JSON.stringify(this.presiones)}).then(response => {
+            return axios.post(url, { accion: 7, idPresion: idPresion, Presiones: JSON.stringify(this.presiones)}).then(response => {
                 console.log(response.data);
             });
         },

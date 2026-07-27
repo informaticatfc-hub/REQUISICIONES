@@ -5,9 +5,11 @@ include_once 'auth.php';
 $objeto   = new Conexion();
 $conexion = $objeto->Conectar();
 
-// case 2 (upload) llega como multipart/form-data; el resto como JSON o GET.
-// Leemos accion desde $_REQUEST para cubrir ambos casos.
-$accionRaw = (int)($_REQUEST['accion'] ?? 0);
+// case 2 (upload) llega como multipart/form-data ($_POST); el resto como JSON
+// (axios manda body JSON, que NO llena $_REQUEST) o GET (?accion=4).
+// api_get_request_data() devuelve [] con multipart, asi que leer ambos es seguro.
+$jsonBody  = api_get_request_data();
+$accionRaw = (int)($_REQUEST['accion'] ?? $jsonBody['accion'] ?? 0);
 
 // CSRF lo valida tf_csrf_validate() usando primero el header X-CSRF-Token,
 // que axios adjunta automáticamente en todos los requests.
@@ -21,14 +23,68 @@ if (in_array($accionRaw, $writeActions, true)) {
 
 $currentUser = api_get_current_user($conexion);
 
-// Para JSON body (cases 1,3) usamos api_get_request_data(); para multipart (case 2) $_POST.
-$jsonBody = ($accionRaw !== 2) ? api_get_request_data() : [];
-
 $hojaId = (int)($_REQUEST['hoja_id'] ?? $jsonBody['hoja_id'] ?? 0);
 $cotId  = (int)($jsonBody['cotizacion_id'] ?? $_GET['cotizacion_id'] ?? 0);
 
 define('COT_UPLOADS_BASE', __DIR__ . '/../uploads/cotizaciones/');
 define('COT_MAX_SIZE', 8 * 1024 * 1024); // 8 MB
+
+// Tipos aceptados: PDF e imagenes (OBS-3). MIME real => extension segura.
+$COT_MIME_EXT = [
+    'application/pdf' => 'pdf',
+    'image/jpeg'      => 'jpg',
+    'image/png'       => 'png',
+];
+
+// --- Alcance de obra: toda accion opera sobre una hoja concreta ------------
+function cotizacion_obra_por_hoja(PDO $conexion, $hojaId)
+{
+    $st = $conexion->prepare(
+        "SELECT r.`requisicion_Obra`
+         FROM `hojasrequisicion` h
+         INNER JOIN `requisiciones` r ON r.`requisicion_id` = h.`hojaRequisicion_idReq`
+         WHERE h.`hojaRequisicion_id` = ? LIMIT 1"
+    );
+    $st->execute([(int)$hojaId]);
+    $obraId = $st->fetchColumn();
+    return $obraId === false ? null : (int)$obraId;
+}
+
+function cotizacion_validar_hoja(PDO $conexion, $hojaId, $currentUser)
+{
+    $obraId = cotizacion_obra_por_hoja($conexion, $hojaId);
+    if ($obraId === null) {
+        tf_abort(404, 'Hoja no encontrada');
+    }
+    return tf_require_obra_access($conexion, $obraId, $currentUser);
+}
+
+// Pagina de error legible para el caso 4 (se abre con target="_blank",
+// asi que un exit en blanco se veia como un 404 nativo del navegador).
+function cotizacion_pagina_error($code, $mensaje)
+{
+    http_response_code($code);
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!doctype html><meta charset="utf-8"><title>Cotizacion no disponible</title>'
+        . '<div style="font-family:system-ui,sans-serif;padding:48px;text-align:center;color:#334155">'
+        . '<h1 style="margin:0 0 12px;font-size:1.5rem">No se pudo abrir la cotizacion</h1>'
+        . '<p style="margin:0;color:#64748b">' . htmlspecialchars($mensaje) . '</p>'
+        . '</div>';
+    exit;
+}
+
+function cotizacion_validar_cotizacion(PDO $conexion, $cotId, $currentUser)
+{
+    $st = $conexion->prepare(
+        "SELECT `cotizacion_hoja_id` FROM `hojas_cotizaciones` WHERE `cotizacion_id` = ? LIMIT 1"
+    );
+    $st->execute([(int)$cotId]);
+    $hojaId = $st->fetchColumn();
+    if ($hojaId === false) {
+        tf_abort(404, 'Cotizacion no encontrada');
+    }
+    cotizacion_validar_hoja($conexion, (int)$hojaId, $currentUser);
+}
 
 $data = [];
 
@@ -36,8 +92,9 @@ switch ($accionRaw) {
 
     case 1: // Listar cotizaciones de una hoja
         if ($hojaId <= 0) { $data = []; break; }
+        cotizacion_validar_hoja($conexion, $hojaId, $currentUser);
         $st = $conexion->prepare(
-            "SELECT `cotizacion_id`, `cotizacion_hoja_id`, `cotizacion_nombre`,
+            "SELECT `cotizacion_id`, `cotizacion_hoja_id`, `cotizacion_nombre`, `cotizacion_archivo`,
                     `cotizacion_size`, `cotizacion_fechaSubida`, `cotizacion_userNombre`
              FROM `hojas_cotizaciones`
              WHERE `cotizacion_hoja_id` = ?
@@ -47,12 +104,13 @@ switch ($accionRaw) {
         $data = $st->fetchAll(PDO::FETCH_ASSOC);
         break;
 
-    case 2: // Subir PDF (multipart/form-data)
+    case 2: // Subir cotizacion PDF o imagen (multipart/form-data)
         if ($hojaId <= 0) {
             http_response_code(422);
             $data = ['error' => 'hoja_id requerido'];
             break;
         }
+        cotizacion_validar_hoja($conexion, $hojaId, $currentUser);
         $fileErr = $_FILES['cotizacion']['error'] ?? -1;
         if (!isset($_FILES['cotizacion']) || $fileErr !== UPLOAD_ERR_OK) {
             http_response_code(422);
@@ -65,15 +123,16 @@ switch ($accionRaw) {
             $data = ['error' => 'El archivo supera el límite de 8 MB'];
             break;
         }
-        // Validar tipo MIME real
+        // Validar tipo MIME real (no la extension del nombre)
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime  = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
-        if ($mime !== 'application/pdf') {
+        if (!isset($COT_MIME_EXT[$mime])) {
             http_response_code(422);
-            $data = ['error' => 'Solo se aceptan archivos PDF'];
+            $data = ['error' => 'Solo se aceptan archivos PDF, JPG o PNG'];
             break;
         }
+        $ext = $COT_MIME_EXT[$mime];
         // Crear directorio si no existe
         $dir = COT_UPLOADS_BASE . $hojaId . '/';
         if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
@@ -85,7 +144,7 @@ switch ($accionRaw) {
         $origBase   = pathinfo($file['name'], PATHINFO_FILENAME);
         $safeBase   = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $origBase);
         $safeBase   = substr($safeBase, 0, 100);
-        $uniqueName = $safeBase . '_' . time() . '.pdf';
+        $uniqueName = $safeBase . '_' . time() . '.' . $ext;
         $destPath   = $dir . $uniqueName;
 
         if (!move_uploaded_file($file['tmp_name'], $destPath)) {
@@ -127,6 +186,7 @@ switch ($accionRaw) {
             $data = ['error' => 'cotizacion_id requerido'];
             break;
         }
+        cotizacion_validar_cotizacion($conexion, $cotId, $currentUser);
         $stGet = $conexion->prepare(
             "SELECT `cotizacion_archivo`
              FROM `hojas_cotizaciones`
@@ -149,8 +209,9 @@ switch ($accionRaw) {
         tf_audit_log($conexion, 'cotizaciones.delete', 'hojas_cotizaciones', $cotId, null);
         break;
 
-    case 4: // Servir PDF inline para visualizar e imprimir (GET con cotizacion_id)
-        if ($cotId <= 0) { http_response_code(422); exit; }
+    case 4: // Servir archivo inline para visualizar e imprimir (GET con cotizacion_id)
+        if ($cotId <= 0) { cotizacion_pagina_error(422, 'Identificador de cotizacion invalido.'); }
+        cotizacion_validar_cotizacion($conexion, $cotId, $currentUser);
         $stGet = $conexion->prepare(
             "SELECT `cotizacion_archivo`, `cotizacion_nombre`
              FROM `hojas_cotizaciones`
@@ -158,13 +219,21 @@ switch ($accionRaw) {
         );
         $stGet->execute([$cotId]);
         $row = $stGet->fetch(PDO::FETCH_ASSOC);
-        if (!$row) { http_response_code(404); exit; }
+        if (!$row) {
+            cotizacion_pagina_error(404, 'Esta cotizacion ya no existe (pudo haber sido eliminada).');
+        }
         $fullPath = __DIR__ . '/../uploads/' . $row['cotizacion_archivo'];
-        if (!file_exists($fullPath)) { http_response_code(404); exit; }
+        if (!file_exists($fullPath)) {
+            cotizacion_pagina_error(404, 'El archivo de esta cotizacion no se encuentra en el servidor. Contacta a soporte.');
+        }
+
+        $extArchivo = strtolower(pathinfo($row['cotizacion_archivo'], PATHINFO_EXTENSION));
+        $contentTypes = ['pdf' => 'application/pdf', 'jpg' => 'image/jpeg', 'png' => 'image/png'];
+        $contentType = $contentTypes[$extArchivo] ?? 'application/octet-stream';
 
         $safeNombre = preg_replace('/[^a-zA-Z0-9_\-\. ]/', '_', $row['cotizacion_nombre']);
-        header('Content-Type: application/pdf');
-        header('Content-Disposition: inline; filename="' . $safeNombre . '.pdf"');
+        header('Content-Type: ' . $contentType);
+        header('Content-Disposition: inline; filename="' . $safeNombre . '.' . $extArchivo . '"');
         header('Content-Length: ' . filesize($fullPath));
         header('Cache-Control: private, max-age=3600');
         readfile($fullPath);

@@ -196,9 +196,16 @@ switch ($accion) {
         try {
             $conexion->beginTransaction();
             $obraInfo = obtenerPrefijoObra($conexion, $obraId);
-            $ultimoFolio = obtenerUltimoFolio($conexion, $obraId, $clave);
-            $folio = $ultimoFolio + 1;
+            // Contador limpio por categoria (clave) + obra: toma el primer folio
+            // libre empezando en 1, ignorando los folios basura del historico.
+            $folio = obtenerSiguienteFolio($conexion, $obraId, $clave);
             $numeroRequisicion = construirNumeroRequisicion($obraInfo, $clave, $folio);
+            // Guarda de unicidad del numero (por si un registro viejo ya ocupa
+            // exactamente esa cadena): avanza el folio hasta encontrar uno libre.
+            while (requisicionNumeroExiste($conexion, $numeroRequisicion)) {
+                $folio++;
+                $numeroRequisicion = construirNumeroRequisicion($obraInfo, $clave, $folio);
+            }
 
             $consulta = "INSERT INTO `requisiciones` (
                 `requisicion_id`, `requisicion_Clave`, `requisicion_Numero`, `requisicion_Nombre`,
@@ -452,6 +459,48 @@ function obtenerUltimoFolio(PDO $conexion, $obraId, $clave)
     $ultimoFolio = $resultado->fetchColumn();
 
     return $ultimoFolio === false ? -1 : (int)$ultimoFolio;
+}
+
+/**
+ * Devuelve el primer folio libre (>= 1) para una categoria (clave) dentro de
+ * una obra. Rellena huecos empezando en 1, por lo que ignora los folios basura
+ * heredados (p.ej. 4363, 123654) y produce series limpias: 001, 002, 003...
+ * Usa FOR UPDATE para bloquear las filas de esa clave+obra durante la
+ * transaccion y evitar folios duplicados en creaciones concurrentes.
+ */
+function obtenerSiguienteFolio(PDO $conexion, $obraId, $clave)
+{
+    $consulta = "SELECT `requisicion_Folio`
+        FROM `requisiciones`
+        WHERE `requisicion_Clave` = ? AND `requisicion_Obra` = ?
+        FOR UPDATE";
+    $resultado = $conexion->prepare($consulta);
+    $resultado->execute(array($clave, $obraId));
+
+    $ocupados = array();
+    foreach ($resultado->fetchAll(PDO::FETCH_COLUMN, 0) as $folio) {
+        $ocupados[(int)$folio] = true;
+    }
+
+    $siguiente = 1;
+    while (isset($ocupados[$siguiente])) {
+        $siguiente++;
+    }
+
+    return $siguiente;
+}
+
+/**
+ * Indica si ya existe una requisicion con ese numero exacto (unicidad de la
+ * cadena visible, independiente del folio numerico).
+ */
+function requisicionNumeroExiste(PDO $conexion, $numero)
+{
+    $consulta = "SELECT 1 FROM `requisiciones` WHERE `requisicion_Numero` = ? LIMIT 1";
+    $resultado = $conexion->prepare($consulta);
+    $resultado->execute(array($numero));
+
+    return $resultado->fetchColumn() !== false;
 }
 
 function construirNumeroRequisicion($obraInfo, $clave, $folio)

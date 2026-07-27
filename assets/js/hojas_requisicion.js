@@ -191,9 +191,11 @@ function hojasReqApp() {
                             var fecha = c.cotizacion_fechaSubida ? c.cotizacion_fechaSubida.slice(0, 10) : '';
                             var li = document.createElement('li');
                             li.className = 'list-group-item d-flex justify-content-between align-items-center gap-2';
+                            var esImagen = /\.(jpe?g|png)$/i.test(c.cotizacion_archivo || '');
+                            var iconoClase = esImagen ? 'bi-file-earmark-image text-primary' : 'bi-file-earmark-pdf text-danger';
                             li.innerHTML =
                                 '<span class="flex-grow-1">'
-                                    + '<i class="bi bi-file-earmark-pdf text-danger me-1"></i>'
+                                    + '<i class="bi ' + iconoClase + ' me-1"></i>'
                                     + '<strong>' + self._escHtml(c.cotizacion_nombre) + '</strong>'
                                     + (kb ? ' <span class="text-muted small">(' + kb + ')</span>' : '')
                                     + (fecha ? ' <span class="text-muted small ms-2">' + fecha + '</span>' : '')
@@ -235,12 +237,12 @@ function hojasReqApp() {
             var fileInput   = document.getElementById('cotFileInput');
             var msgDiv      = document.getElementById('cotUploadMsg');
             if (!fileInput || !fileInput.files.length) {
-                self._cotMsg('Selecciona un archivo PDF.', 'warning');
+                self._cotMsg('Selecciona un archivo PDF, JPG o PNG.', 'warning');
                 return;
             }
             var file = fileInput.files[0];
-            if (!file.name.toLowerCase().endsWith('.pdf')) {
-                self._cotMsg('Solo se aceptan archivos PDF.', 'danger');
+            if (!/\.(pdf|jpe?g|png)$/i.test(file.name)) {
+                self._cotMsg('Solo se aceptan archivos PDF, JPG o PNG.', 'danger');
                 return;
             }
             var fd = new FormData();

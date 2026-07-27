@@ -24,14 +24,8 @@ $tf_show_admin = in_array(($__user['role']['code'] ?? ''), ['admin', 'desarrolla
 $tf_user_id_js = (string)($__user['user_id'] ?? '');
 
 $tf_extra_head = <<<'CSS'
-<link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/responsive/3.0.2/css/responsive.bootstrap5.css">
 <style>
 [x-cloak]{display:none!important;}
-#AppPresionDetail .table-prof thead th { white-space: nowrap; }
-#AppPresionDetail .table-prof td { vertical-align: middle; }
-#AppPresionDetail .table-prof thead th,
-#AppPresionDetail .table-prof tbody td { padding: .62rem .68rem; }
 #AppPresionDetail .tf-kpi-value { line-height: 1.15; }
 @media (max-width: 991.98px) {
     #AppPresionDetail .tf-kpi-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -41,10 +35,8 @@ $tf_extra_head = <<<'CSS'
     #AppPresionDetail .tf-page-actions { width: 100%; }
     #AppPresionDetail .tf-page-actions .tf-btn { width: 100%; }
     #AppPresionDetail .tf-kpi-grid { grid-template-columns: 1fr; }
-    #AppPresionDetail .table-prof { font-size: .82rem; }
-    #AppPresionDetail .table-prof thead th,
-    #AppPresionDetail .table-prof tbody td { padding: .48rem .52rem; }
-    #AppPresionDetail .table-prof .form-control { min-height: 34px; padding: .32rem .5rem; font-size: .8rem; }
+    #AppPresionDetail .tf-admin-table { font-size: .82rem; }
+    #AppPresionDetail .tf-admin-table .form-control { min-height: 34px; padding: .32rem .5rem; font-size: .8rem; }
 }
 </style>
 CSS;
@@ -83,8 +75,8 @@ include __DIR__ . '/../includes/layout_top.php';
         <section class="tf-card">
             <div class="tf-card-body p-0">
                 <div class="table-responsive">
-                    <table id="example" class="table table-prof align-middle table-hover w-100 mb-0">
-                        <thead class="table-dark">
+                    <table id="example" class="tf-admin-table w-100 mb-0">
+                        <thead>
                             <tr>
                                 <th class="text-center align-middle">CLAVE</th>
                                 <th class="text-center align-middle">N° DE REQUISICION</th>
@@ -99,7 +91,7 @@ include __DIR__ . '/../includes/layout_top.php';
                                 <th class="text-center align-middle"></th>
                             </tr>
                         </thead>
-                        <tbody class="table-light" id="Tabla_Items">
+                        <tbody id="Tabla_Items">
                             <template x-for="(presion, indice) in presiones" :key="presion.id_hoja + '-' + indice">
                             <tr x-show="presion.HojaEstatus == 'LIGADA' || presion.HojaEstatus == 'AUTORIZADA' || presion.HojaEstatus == 'PAGADA'">
                                 <td class="text-center align-middle" x-text="presion.clave"></td>
@@ -131,9 +123,22 @@ include __DIR__ . '/../includes/layout_top.php';
                                 </td>
                             </tr>
                             </template>
+                            <!-- Fila de detalle expandible (mismo array; "cambiarBooleano" alterna presion.showDetail) -->
+                            <template x-for="(presion, indice) in presiones" :key="'detalle-' + presion.id_hoja + '-' + indice">
+                            <tr x-show="presion.showDetail && (presion.HojaEstatus == 'LIGADA' || presion.HojaEstatus == 'AUTORIZADA' || presion.HojaEstatus == 'PAGADA')" style="background:var(--tf-surface-2)">
+                                <td colspan="11">
+                                    <div class="p-2 small">
+                                        <div class="mb-1"><strong>Requisición:</strong> <span x-text="presion.nombreReq"></span></div>
+                                        <div class="mb-1"><strong>Concepto completo:</strong> <span x-text="presion.concepto"></span></div>
+                                        <div class="mb-1"><strong>Observaciones:</strong> <span x-text="presion.Observaciones || '—'"></span></div>
+                                        <div><strong>Estatus:</strong> hoja <span x-text="presion.HojaEstatus"></span> · presión <span x-text="presion.PresionEstatus"></span></div>
+                                    </div>
+                                </td>
+                            </tr>
+                            </template>
                         </tbody>
-                        <tfoot class="table-dark">
-                            <tr>
+                        <tfoot>
+                            <tr class="fw-bold">
                                 <td colspan="4" class="text-end">Total:</td>
                                 <td class="text-center align-middle" x-text="formatearMoneda(sumatoria(presiones,'total'),true)"></td>
                                 <td class="text-center align-middle" x-text="formatearMoneda(sumatoria(presiones,'adeudo'),true)"></td>
@@ -181,8 +186,11 @@ include __DIR__ . '/../includes/layout_top.php';
 <?php
 $tf_use_vue = false;
 $tf_use_axios = true;
-$tf_use_jquery = true;
-$tf_use_datatables = true;
+// jQuery/DataTables ya no se usan: la tabla la renderiza Alpine (x-for),
+// igual que en hojas_requisicion.php e items_requisicion.php (mismo bug OBS-7:
+// DataTables reestructura el DOM y rompe el scope reactivo de Alpine).
+$tf_use_jquery = false;
+$tf_use_datatables = false;
 $tf_extra_scripts =
     '<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>' .
     '<script src="../assets/lib/exceljs/exceljs.min.js"></script>' .

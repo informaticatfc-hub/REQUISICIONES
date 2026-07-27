@@ -96,6 +96,29 @@ body.tf-app a:hover { color: var(--tf-brand-700); }
 [data-bs-theme="dark"] .dropdown-item:focus { background: rgba(59,130,246,.15); color: #fff; }
 [data-bs-theme="dark"] hr.dropdown-divider { border-color: var(--tf-border); }
 
+/* SweetAlert2 override (modo oscuro). El popup se auto-inyecta con CSS propio
+   (fondo blanco fijo) sin conocer el tema de la app; se fuerza con !important
+   porque su <style> puede insertarse despues de esta hoja. */
+[data-bs-theme="dark"] .swal2-popup {
+    background: var(--tf-surface) !important;
+    color: var(--tf-text) !important;
+}
+[data-bs-theme="dark"] .swal2-title,
+[data-bs-theme="dark"] .swal2-html-container { color: var(--tf-text) !important; }
+[data-bs-theme="dark"] .swal2-close { color: var(--tf-text-soft) !important; }
+[data-bs-theme="dark"] .swal2-input,
+[data-bs-theme="dark"] .swal2-textarea,
+[data-bs-theme="dark"] .swal2-select,
+[data-bs-theme="dark"] .swal2-file {
+    background: var(--tf-surface-2) !important;
+    color: var(--tf-text) !important;
+    border-color: var(--tf-border) !important;
+}
+[data-bs-theme="dark"] .swal2-validation-message {
+    background: var(--tf-danger-50) !important;
+    color: var(--tf-danger-600) !important;
+}
+
 /* ====================== TOPBAR ====================== */
 .tf-topbar {
     position: sticky; top: 0; z-index: 1030;
