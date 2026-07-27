@@ -17,18 +17,14 @@ $idHoja =   (isset($_POST['idHoja'])) ? $_POST['idHoja'] : '';
 $id_presion = (isset($_POST['id_presion'])) ? $_POST['id_presion'] : ((isset($_POST['idPresion'])) ? $_POST['idPresion'] : '');
 
 // --- RBAC + CSRF (Fase 3) ---
-// case 6 = INSERT requisicion (create); case 8 = DELETE hoja (delete); case 9 = duplicar hoja (create).
-// El resto son lecturas.
+// case 8 = DELETE hoja (delete). El resto son lecturas.
+// (cases 6 y 9 eliminados: crear requisicion vive en crud_Requisiciones.php
+//  y duplicar hoja se retiro por decision de negocio OBS-4b.)
 $accionInt = (int)$accion;
-if ($accionInt === 6) {
+if ($accionInt === 8) {
     api_require_csrf($_POST);
-    tf_require_permission($conexion, 'requisiciones.create');
-} elseif ($accionInt === 8) {
-    api_require_csrf($_POST);
-    tf_require_permission($conexion, 'requisiciones.delete');
-} elseif ($accionInt === 9) {
-    api_require_csrf($_POST);
-    tf_require_permission($conexion, 'requisiciones.create');
+    // Permiso real del catalogo RBAC (antes 'requisiciones.delete', inexistente -> 403 para todos)
+    tf_require_permission($conexion, 'hojas.delete');
 } else {
     tf_require_permission($conexion, 'requisiciones.view');
 }
@@ -113,59 +109,9 @@ switch ($accion) {
         $resultado->execute($scope['params']);
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
-    case 6:
-        $obraId = api_require_positive_int($obra, 'Obra invalida');
-        tf_require_obra_access($conexion, $obraId, $currentUser);
-        $consulta = "SELECT `obras_nombre`,`ciudadesObras_codigo` FROM `obras` JOIN estadosobra ON estadosobra.ciudadesObras_id = obras.obras_cuidad WHERE `obras_id` = ?";
-        $resultado = $conexion->prepare($consulta);
-        $resultado->execute(array($obraId));
-        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
-        if (count($data) === 0) {
-            $data = array();
-            break;
-        }
-        $numero_requesicion = $data[0]['ciudadesObras_codigo'] . "-" . $data[0]['obras_nombre'];
-        $consulta = "SELECT * FROM `requisiciones` WHERE `requisicion_Clave` = ? AND `requisicion_Obra` = ?";
-        $resultado = $conexion->prepare($consulta);
-        $resultado->execute(array($clave, (int)$obra));
-        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
-        if (count($data) == 0) {
-            $numero_requesicion = $numero_requesicion . "-" . $clave . "-000";
-            // Consulta para insertar datos en la tabla requisiciones
-            $consulta = "INSERT INTO `requisiciones` (`requisicion_id`, `requisicion_Clave`, `requisicion_Numero`, `requisicion_Nombre`, `requisicion_Obra`, `requisicion_fechaSolicitud`, `requisicion_Folio`, `requisicion_total`, `requisicion_estatus`) 
-            VALUES (NULL, :requisicion_clave, :requisicion_Numero, :requisicion_nombre, :requisicion_Obra , :requisicion_fechaSolicitud, '0', '0', 'ABIERTO')";
-            $resultado = $conexion->prepare($consulta);
-            // Vincular las variables a la consulta
-            $resultado->bindParam(':requisicion_clave', $clave);
-            $resultado->bindParam(':requisicion_nombre', $nombreReq);
-            $resultado->bindParam(':requisicion_fechaSolicitud', $fechaReq);
-            $resultado->bindParam(':requisicion_Obra', $obra);
-            $resultado->bindParam(':requisicion_Numero', $numero_requesicion);
-            // Ejecutar la consulta
-            $resultado->execute();
-        } else {
-            $consulta = "SELECT `requisicion_Folio` FROM `requisiciones` WHERE `requisicion_Clave` = ? AND `requisicion_Obra` = ? ORDER BY `requisicion_Folio` ASC";
-            $resultado = $conexion->prepare($consulta);
-            $resultado->execute(array($clave, (int)$obra));
-            $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
-            $folio = $data[count($data) - 1]['requisicion_Folio'] + 1;
-            $numero_requesicion = $numero_requesicion . "-" . $clave . "-" . convertFolio($folio);
-
-            // Consulta para insertar datos en la tabla requisiciones
-            $consulta = "INSERT INTO `requisiciones` (`requisicion_id`, `requisicion_Clave`, `requisicion_Numero`, `requisicion_Nombre`, `requisicion_Obra`, `requisicion_fechaSolicitud`, `requisicion_Folio`, `requisicion_total`, `requisicion_estatus`) 
-             VALUES (NULL, :requisicion_clave, :requisicion_Numero, :requisicion_nombre, :requisicion_Obra , :requisicion_fechaSolicitud, :requisicion_Folio, '0', 'ABIERTO')";
-            $resultado = $conexion->prepare($consulta);
-            // Vincular las variables a la consulta
-            $resultado->bindParam(':requisicion_clave', $clave);
-            $resultado->bindParam(':requisicion_nombre', $nombreReq);
-            $resultado->bindParam(':requisicion_fechaSolicitud', $fechaReq);
-            $resultado->bindParam(':requisicion_Obra', $obra);
-            $resultado->bindParam(':requisicion_Numero', $numero_requesicion);
-            $resultado->bindParam(':requisicion_Folio', $folio);
-            // Ejecutar la consulta
-            $resultado->execute();
-        }
-        break;
+    // case 6 (crear requisicion) ELIMINADO: era una ruta legacy sin registro de
+    // creador ni auditoria y sin llamadores en el frontend. El alta de
+    // requisiciones vive unicamente en crud_Requisiciones.php (acciones 6/7).
     case 7:
         $obraId = hojas_requisicion_obtener_obra_por_requisicion($conexion, $IdReq);
         if ($obraId === null) {
@@ -203,110 +149,9 @@ switch ($accion) {
     }
     break;
 
-    // C-M3: Duplicar hoja (copia cabecera + items dentro de la misma requisición)
-    case 9:
-    $obraHoja = hojas_requisicion_obtener_obra_por_hoja($conexion, $idHoja);
-    if ($obraHoja === null) {
-        tf_abort(404, 'Hoja no encontrada');
-    }
-    tf_require_obra_access($conexion, $obraHoja, $currentUser);
-    $conexion->beginTransaction();
-    try {
-        // Obtener hoja origen
-        $stHoja = $conexion->prepare("SELECT * FROM `hojasrequisicion` WHERE `hojaRequisicion_id` = :id");
-        $stHoja->bindValue(':id', (int)$idHoja, PDO::PARAM_INT);
-        $stHoja->execute();
-        $hojaOrigen = $stHoja->fetch(PDO::FETCH_ASSOC);
-        if (!$hojaOrigen) {
-            $conexion->rollBack();
-            tf_abort(404, 'Hoja no encontrada');
-        }
-
-        // Calcular el siguiente número de hoja en la misma requisición
-        $stNum = $conexion->prepare(
-            "SELECT COALESCE(MAX(hojaRequisicion_numero), 0) + 1 AS siguiente
-             FROM `hojasrequisicion`
-             WHERE `hojaRequisicion_idReq` = :idReq"
-        );
-        $stNum->bindValue(':idReq', (int)$hojaOrigen['hojaRequisicion_idReq'], PDO::PARAM_INT);
-        $stNum->execute();
-        $siguienteNum = (int)$stNum->fetchColumn();
-
-        // Insertar hoja copia con estatus NUEVO
-        $stInsHoja = $conexion->prepare(
-            "INSERT INTO `hojasrequisicion` (
-                `hojaRequisicion_idReq`, `hojaRequisicion_numero`, `hojaRequisicion_formaPago`,
-                `hojaRequisicion_idEmisor`, `hojaRequisicion_proveedor`,
-                `hojaRequisicion_total`, `hojaRequisicion_fechaPago`,
-                `hojaRequisicion_transferencia`, `hojaRequisicion_observaciones`,
-                `hojarequisicion_conceptoUnico`, `hojaRequisicion_estatus`
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,'NUEVO')"
-        );
-        $stInsHoja->execute([
-            (int)$hojaOrigen['hojaRequisicion_idReq'],
-            $siguienteNum,
-            $hojaOrigen['hojaRequisicion_formaPago'],
-            $hojaOrigen['hojaRequisicion_idEmisor'],
-            $hojaOrigen['hojaRequisicion_proveedor'],
-            $hojaOrigen['hojaRequisicion_total'],
-            $hojaOrigen['hojaRequisicion_fechaPago'],
-            $hojaOrigen['hojaRequisicion_transferencia'],
-            $hojaOrigen['hojaRequisicion_observaciones'],
-            $hojaOrigen['hojarequisicion_conceptoUnico'],
-        ]);
-        $newHojaId = (int)$conexion->lastInsertId();
-
-        // Copiar items
-        $stItems = $conexion->prepare(
-            "SELECT `itemRequisicion_lote`, `itemRequisicion_unidad`, `itemRequisicion_producto`,
-                    `itemRequisicion_cantidad`, `itemRequisicion_precio`, `itemRequisicion_iva`,
-                    `itemRequisicion_total`, `itemRequisicion_retenciones`, `itemRequisicion_stotal`
-             FROM `itemrequisicion` WHERE `itemRequisicion_idHoja` = :id"
-        );
-        $stItems->bindValue(':id', (int)$idHoja, PDO::PARAM_INT);
-        $stItems->execute();
-        $items = $stItems->fetchAll(PDO::FETCH_ASSOC);
-
-        $stInsItem = $conexion->prepare(
-            "INSERT INTO `itemrequisicion` (
-                `itemRequisicion_idHoja`, `itemRequisicion_lote`, `itemRequisicion_unidad`,
-                `itemRequisicion_producto`, `itemRequisicion_cantidad`, `itemRequisicion_precio`,
-                `itemRequisicion_iva`, `itemRequisicion_total`, `itemRequisicion_retenciones`,
-                `itemRequisicion_stotal`
-            ) VALUES (?,?,?,?,?,?,?,?,?,?)"
-        );
-        foreach ($items as $item) {
-            $stInsItem->execute([
-                $newHojaId,
-                $item['itemRequisicion_lote'],
-                $item['itemRequisicion_unidad'],
-                $item['itemRequisicion_producto'],
-                $item['itemRequisicion_cantidad'],
-                $item['itemRequisicion_precio'],
-                $item['itemRequisicion_iva'],
-                $item['itemRequisicion_total'],
-                $item['itemRequisicion_retenciones'],
-                $item['itemRequisicion_stotal'],
-            ]);
-        }
-
-        // Actualizar contador de hojas en la requisición
-        $stUpd = $conexion->prepare(
-            "UPDATE `requisiciones` SET `requisicion_Hojas` = `requisicion_Hojas` + 1
-             WHERE `requisicion_id` = ?"
-        );
-        $stUpd->execute([(int)$hojaOrigen['hojaRequisicion_idReq']]);
-
-        $conexion->commit();
-        $data = ['status' => 'ok', 'newHojaId' => $newHojaId, 'numero' => $siguienteNum];
-        tf_audit_log($conexion, 'requisiciones.hoja.duplicar', 'hojasrequisicion', $newHojaId, [
-            'origen_id' => (int)$idHoja,
-        ]);
-    } catch (Exception $e) {
-        $conexion->rollBack();
-        $data = ['status' => 'error', 'message' => $e->getMessage()];
-    }
-    break;
+    // case 9 (duplicar hoja) ELIMINADO por decision de negocio (OBS-4b,
+    // 2026-06-29): cada hoja es unica. El boton se retiro de la UI y este
+    // endpoint ademas referenciaba columnas inexistentes en la BD real.
 
     case 10:
         // R-M2 / R-M3: Historial de estatus de una hoja (para badge popover y timeline)
@@ -316,9 +161,10 @@ switch ($accion) {
         }
         // Verificar acceso a la obra de la hoja
         $obraHoja = hojas_requisicion_obtener_obra_por_hoja($conexion, $idHojaInt);
-        if ($obraHoja !== null) {
-            tf_require_obra_access($conexion, $obraHoja, $currentUser);
+        if ($obraHoja === null) {
+            tf_abort(404, 'Hoja no encontrada');
         }
+        tf_require_obra_access($conexion, $obraHoja, $currentUser);
         $stmt = $conexion->prepare(
             'SELECT
                 log_id           AS id,
@@ -335,19 +181,9 @@ switch ($accion) {
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
         break;
 
+    default:
+        api_json_error('Accion invalida', 400);
 }
 
 print json_encode($data, JSON_UNESCAPED_UNICODE);
 $conexion = NULL;
-
-
-function convertFolio($folioInt)
-{
-    if ($folioInt < 10) {
-        return "0" . "0" . $folioInt;
-    } else if ($folioInt < 100) {
-        return "0" . $folioInt;
-    } else {
-        return $folioInt;
-    }
-}

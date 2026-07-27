@@ -66,13 +66,13 @@ include __DIR__ . '/../includes/layout_top.php';
                     <div x-show="provDropOpen && provSearchResults.length > 0"
                          x-on:click.outside="provDropOpen = false"
                          style="position:absolute;top:100%;left:0;right:0;z-index:1050;
-                                background:#fff;border:1px solid #ccc;border-top:none;
+                                background:var(--tf-surface);border:1px solid var(--tf-border);border-top:none;
                                 max-height:260px;overflow-y:auto;border-radius:0 0 .375rem .375rem;
-                                box-shadow:0 4px 12px rgba(0,0,0,.1)">
+                                box-shadow:var(--tf-shadow-md)">
                         <template x-for="p in provSearchResults" x-bind:key="p.proveedor_id">
                             <button type="button"
                                     class="dropdown-item py-2 px-3 text-start"
-                                    style="border-bottom:1px solid #f0f0f0"
+                                    style="border-bottom:1px solid var(--tf-border);color:var(--tf-text)"
                                     x-on:click="seleccionarProveedor(p)">
                                 <div class="fw-semibold" x-text="p.proveedor_nombre"></div>
                                 <small class="text-muted">
@@ -85,8 +85,8 @@ include __DIR__ . '/../includes/layout_top.php';
                     </div>
                     <div x-show="provDropOpen && provSearchText.length > 0 && provSearchResults.length === 0"
                          style="position:absolute;top:100%;left:0;right:0;z-index:1050;
-                                background:#fff;border:1px solid #ccc;padding:.5rem 1rem;
-                                border-radius:0 0 .375rem .375rem;color:#999;font-size:.9rem">
+                                background:var(--tf-surface);border:1px solid var(--tf-border);padding:.5rem 1rem;
+                                border-radius:0 0 .375rem .375rem;color:var(--tf-text-muted);font-size:.9rem">
                         Sin coincidencias
                     </div>
                 </div>
@@ -116,13 +116,13 @@ include __DIR__ . '/../includes/layout_top.php';
 
         <div class="row form-group mx-0 mt-0 mb-3">
             <div class="col-12">
-                <table class="table table-prof table-hover">
-                    <thead class="table-dark">
+                <table class="tf-admin-table w-100">
+                    <thead>
                         <tr>
                             <th scope="col">Lote</th><th scope="col">Unidad</th><th scope="col">Producto</th><th scope="col">Cantidad</th><th scope="col">Precio Unitario</th><th scope="col">IVA</th><th scope="col">Retenciones</th><th scope="col">Total</th><th></th>
                         </tr>
                     </thead>
-                    <tbody class="table-light" id="Tabla_Items">
+                    <tbody id="Tabla_Items">
                         <template x-for="(item,indice) in Items" :key="item.Lote + '-' + indice">
                         <tr class="my-3">
                             <th scope="row" class="py-3 celda_Item text-center align-middle" x-text="item.Lote"></th>
@@ -134,14 +134,19 @@ include __DIR__ . '/../includes/layout_top.php';
                             <td class="py-3 celda_Item text-center align-middle">- <span x-text="formatearMoneda(item.Retenciones)"></span></td>
                             <td class="py-3 celda_Item text-center align-middle" x-text="formatearMoneda(item.STotal)"></td>
                             <td class="py-3 celda_Item text-center align-middle">
-                                <button type="button" class="btn btn-danger" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Eliminar item" x-on:click="eliminarItem(indice)">
-                                    <img src="../images/icons/delete.svg" alt="eliminar" height="24" width="24">
-                                </button>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-primary" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Modificar item" x-on:click="editarItem(indice)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-fill text-white" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V11.5h-.5a.5.5 0 0 1-.5-.5V9.5h-.5a.5.5 0 0 1-.5-.5V7.5H1.5a.5.5 0 0 1-.5-.5v-.5a.5.5 0 0 1 .5-.5h1V4.5a.5.5 0 0 1 .5-.5h.5V3.5a.5.5 0 0 1 .5-.5h.5V2.5a.5.5 0 0 1 .5-.5H6a.5.5 0 0 1 .5.5v1.5h.5a.5.5 0 0 1 0 1h-.5v.5h.5a.5.5 0 0 1 0 1h-.5v.5h.5a.5.5 0 0 1 0 1h-.5v.5h.5a.5.5 0 0 1 0 1h-.5v1a.5.5 0 0 0 .5.5h.5v.5a.5.5 0 0 0 .5.5h1.5a.5.5 0 0 0 .5-.5v-.5h.5a.5.5 0 0 0 .5-.5v-1.5a.5.5 0 0 0-1 0v1h-.5v-.5a.5.5 0 0 0-1 0v.5h-.5v-.5a.5.5 0 0 0-1 0v.5H9v-.5a.5.5 0 0 0-1 0v.5H7v-1.5a.5.5 0 0 0-1 0v1.5H5v-.5a.5.5 0 0 0-1 0v.5H3v-.5a.5.5 0 0 0-1 0v.5H1v-2a.5.5 0 0 0-1 0v2a1.5 1.5 0 0 0 1.5 1.5h13a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"/></svg>
+                                    </button>
+                                    <button type="button" class="btn btn-danger" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Eliminar item" x-on:click="eliminarItem(indice)">
+                                        <img src="../images/icons/delete.svg" alt="eliminar" height="24" width="24">
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         </template>
                     </tbody>
-                    <tfoot class="table-dark"><tr><th colspan="7" class="table-active text-end">Total: </th><td colspan="2" x-text="formatearMoneda(Total_Pagar_Mostrar)"></td></tr></tfoot>
+                    <tfoot><tr class="fw-bold"><th colspan="7" class="text-end">Total: </th><td colspan="2" x-text="formatearMoneda(Total_Pagar_Mostrar)"></td></tr></tfoot>
                 </table>
             </div>
 

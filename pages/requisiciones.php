@@ -327,11 +327,15 @@ $tf_inline_script = <<<JS
             },
             addRequisicion: async function () {
                 if (!CAN_CREATE) return;
+                var _hoy = new Date();
+                var _hoyISO = _hoy.getFullYear() + '-'
+                      + String(_hoy.getMonth() + 1).padStart(2, '0') + '-'
+                      + String(_hoy.getDate()).padStart(2, '0');
                 var html = '<div class="text-start">'
                       + '<div class="mb-2"><label class="form-label">Nombre de la Requisicion</label>'
                       + '<input id="nombreRequisicion" class="form-control"></div>'
-                      + '<div class="mb-2"><label class="form-label">Fecha</label>'
-                      + '<input type="date" id="fechaGeneracion" class="form-control"></div>'
+                      + '<div class="mb-2"><label class="form-label">Fecha de creacion</label>'
+                      + '<input type="date" id="fechaGeneracion" class="form-control" value="' + _hoyISO + '"></div>'
                       + '<div class="mb-2"><label class="form-label">Categoria</label>'
                       + '<select id="Clv" class="form-select">'
                       + '<option value="">Selecciona categoria</option>'

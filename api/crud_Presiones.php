@@ -76,7 +76,7 @@ switch ($accion) {
 
         $consulta = "SELECT `presiones_id`, `presiones_nombre`, `presiones_alias`, `presiones_estatus`, `presiones_semana`, `presiones_dia`
             FROM `presiones`" . $where . "
-            ORDER BY `presiones_fechaCreacion` DESC
+            ORDER BY `presiones_fechaCreacion` DESC, `presiones_id` DESC
             LIMIT " . (int)$limite . " OFFSET " . (int)$offset;
         $resultado = $conexion->prepare($consulta);
         $resultado->execute($params);
@@ -120,7 +120,7 @@ switch ($accion) {
         $obraId = api_require_positive_int($obra, 'Obra invalida');
         tf_require_obra_access($conexion, $obraId, $currentUser);
 
-        if ($semana === '' || $dia === '' || $fecha === '') {
+        if ($semana === '' || $dia === '') {
             api_json_error('Faltan datos para crear la presion', 422);
         }
 
@@ -163,7 +163,7 @@ switch ($accion) {
                 `presiones_adeudo`, `presiones_fechaCreacion`, `presiones_gastosObra`, `presiones_obra`,
                 `presiones_userCreado`, `presiones_userValidado`, `presiones_estatus`
             ) VALUES (
-                NULL, ?, ?, ?, ?, '0', ?, '0', ?, ?, NULL, 'PENDIENTE'
+                NULL, ?, ?, ?, ?, '0', CURDATE(), '0', ?, ?, '', 'PENDIENTE'
             )";
             $resultado = $conexion->prepare($consulta);
             $resultado->execute(array(
@@ -171,7 +171,6 @@ switch ($accion) {
                 $alias,
                 $semana,
                 $dia,
-                $fecha,
                 $obraId,
                 (int)$currentUser['user_id'],
             ));

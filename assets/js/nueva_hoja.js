@@ -509,6 +509,148 @@ function nuevaHojaApp() {
         irMenuCatalago: function(){
             window.location.href = url2 + "/menu_catalago.php";
         },
+        editarItem: async function(indice){
+            const item = this.Items[indice];
+            const { value: formValues } = await Swal.fire({
+                title: "Modificar Item",
+                html: `
+                    <div class="col">
+                        <hr />
+                        <div class="row form-group mx-0 my-3">
+                            <div class="col d-flex flex-column"><label class="text-start py-2" for="ProductoEdit">Producto</label>
+                                <textarea class="form-control" id="ProductoEdit" rows="3">${item.Nombre}</textarea>
+                            </div>
+                        </div>
+                        <div class="row form-group mx-0 my-3">
+                            <div class="col-4 d-flex flex-column"><label class="text-start py-2" for="UnidadEdit">Unidad</label>
+                                <select class="form-select" id="UnidadEdit">
+                                    <option value="DISEÑO" ${item.Unidad === 'DISEÑO' ? 'selected' : ''}>DISEÑO</option>
+                                    <option value="PIEZAS" ${item.Unidad === 'PIEZAS' ? 'selected' : ''}>PIEZAS</option>
+                                    <option value="BULTOS" ${item.Unidad === 'BULTOS' ? 'selected' : ''}>BULTOS</option>
+                                    <option value="PESOS" ${item.Unidad === 'PESOS' ? 'selected' : ''}>PESOS</option>
+                                    <option value="LITROS" ${item.Unidad === 'LITROS' ? 'selected' : ''}>LITROS</option>
+                                    <option value="SERVICIOS" ${item.Unidad === 'SERVICIOS' ? 'selected' : ''}>SERVICIOS</option>
+                                    <option value="MENSUALIDAD" ${item.Unidad === 'MENSUALIDAD' ? 'selected' : ''}>MENSUALIDAD</option>
+                                    <option value="RENTA" ${item.Unidad === 'RENTA' ? 'selected' : ''}>RENTA</option>
+                                    <option value="CUBETAS" ${item.Unidad === 'CUBETAS' ? 'selected' : ''}>CUBETAS</option>
+                                    <option value="TONELADAS" ${item.Unidad === 'TONELADAS' ? 'selected' : ''}>TONELADAS</option>
+                                    <option value="METROS" ${item.Unidad === 'METROS' ? 'selected' : ''}>METROS</option>
+                                    <option value="METROS CUADRADOS" ${item.Unidad === 'METROS CUADRADOS' ? 'selected' : ''}>METROS CUADRADOS</option>
+                                    <option value="METROS CUBICOS" ${item.Unidad === 'METROS CUBICOS' ? 'selected' : ''}>METROS CUBICOS</option>
+                                    <option value="KILOGRAMOS" ${item.Unidad === 'KILOGRAMOS' ? 'selected' : ''}>KILOGRAMOS</option>
+                                    <option value="VIAJES" ${item.Unidad === 'VIAJES' ? 'selected' : ''}>VIAJES</option>
+                                </select>
+                            </div>
+                            <div class="col-4 d-flex flex-column"><label class="text-start py-2" for="CantidadEdit">Cantidad</label>
+                                <input type="number" min="0" class="form-control" id="CantidadEdit" value="${item.Cantidad}">
+                            </div>
+                            <div class="col-4 d-flex flex-column"><label class="text-start py-2" for="PrecioEdit">Precio Unitario</label>
+                                <input type="number" min="0" class="form-control" id="PrecioEdit" value="${item.UnitedPrice}">
+                            </div>
+                        </div>
+                        ${this.PagoTrans ? `
+                        <hr />
+                        <div class="row mx-0 my-3">
+                            <div class="col">
+                                <h5 class="text-start fw-bold">Retenciones</h5>
+                            </div>
+                        </div>
+                        <div class="row form-group mx-0 my-3">
+                            <div class="col-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="RetFleteEdit" ${item.bandFlete ? 'checked' : ''}>
+                                    <label class="form-check-label" for="RetFleteEdit">Flete (4%)</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="RetFisicaEdit" ${item.bandFisico ? 'checked' : ''}>
+                                    <label class="form-check-label" for="RetFisicaEdit">Persona Física (10.67%)</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row form-group mx-0 my-3">
+                            <div class="col-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="RetResicoEdit" ${item.bandResico ? 'checked' : ''}>
+                                    <label class="form-check-label" for="RetResicoEdit">RESICO (1.25%)</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="RetISREdit" ${item.bandISR ? 'checked' : ''}>
+                                    <label class="form-check-label" for="RetISREdit">ISR (10%)</label>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Actualizar',
+                confirmButtonColor: '#0d6efd',
+                cancelButtonColor: '#dc3545',
+                preConfirm: () => {
+                    const producto = document.getElementById('ProductoEdit').value;
+                    const unidad = document.getElementById('UnidadEdit').value;
+                    const cantidad = document.getElementById('CantidadEdit').value;
+                    const precio = document.getElementById('PrecioEdit').value;
+
+                    if (!producto || !unidad || !cantidad || !precio) {
+                        Swal.showValidationMessage('Por favor completa todos los campos');
+                        return false;
+                    }
+                    return {producto, unidad, cantidad: parseFloat(cantidad), precio: parseFloat(precio)};
+                }
+            });
+
+            if (formValues) {
+                const aux = formValues.cantidad * formValues.precio;
+                const totalAnterior = item.STotal;
+
+                item.Nombre = this.eliminarSaltosDeLinea(formValues.producto);
+                item.Unidad = formValues.unidad;
+                item.Cantidad = formValues.cantidad;
+                item.UnitedPrice = formValues.precio;
+
+                if (this.PagoTrans) {
+                    item.bandFlete = document.getElementById('RetFleteEdit').checked;
+                    item.bandFisico = document.getElementById('RetFisicaEdit').checked;
+                    item.bandResico = document.getElementById('RetResicoEdit').checked;
+                    item.bandISR = document.getElementById('RetISREdit').checked;
+
+                    let ret = 0;
+                    if (item.bandFlete) ret += aux * 0.04;
+                    if (item.bandFisico) ret += aux * 0.106667;
+                    if (item.bandResico) ret += aux * 0.0125;
+                    if (item.bandISR) ret += aux * 0.1;
+
+                    item.IVA = aux * 0.16;
+                    item.Retenciones = ret;
+                    item.STotal = aux - ret + item.IVA;
+                } else {
+                    item.IVA = 0;
+                    item.Retenciones = 0;
+                    item.STotal = aux;
+                }
+
+                this.SubTotal = this.SubTotal - totalAnterior + item.STotal;
+                this.Total_Pagar = this.SubTotal;
+                this.Total_Pagar_Mostrar = Number.parseFloat(this.Total_Pagar).toFixed(2);
+
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Item actualizado'
+                });
+            }
+        },
         eliminarItem: function(indice){
             var totalAnterior = this.Items[indice]['STotal'];
             this.SubTotal = Number.parseFloat(this.Total_Pagar_Mostrar) - Number.parseFloat(totalAnterior)

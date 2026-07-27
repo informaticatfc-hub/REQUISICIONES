@@ -46,15 +46,21 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case  6:
+        // La tabla `presiones` no tiene columna de total/presupuesto (BD-3); se
+        // reporta 0 para desactivar el aviso de "excede el total" en el frontend.
+        // El total ya ligado se calcula via la tabla puente `requisicionesligadas`
+        // (no existe `hojaRequisicion_idPresion`, error real detectado en pruebas).
         $consulta = "SELECT p.presiones_nombre,
-                           COALESCE(p.presiones_total, 0) AS presiones_total,
+                           0 AS presiones_total,
                            COALESCE(SUM(h.hojaRequisicion_total),0) AS totalYaLigado
                     FROM presiones p
+                    LEFT JOIN requisicionesligadas rl
+                        ON rl.requisicionesLigada_presionID = p.presiones_id
                     LEFT JOIN hojasrequisicion h
-                        ON h.hojaRequisicion_idPresion = p.presiones_id
+                        ON h.hojaRequisicion_id = rl.requisicionesLigadas_hojaID
                        AND h.hojaRequisicion_estatus NOT IN ('NUEVO','PENDIENTE','RECHAZADA')
                     WHERE p.presiones_id = ?
-                    GROUP BY p.presiones_id, p.presiones_nombre, p.presiones_total";
+                    GROUP BY p.presiones_id, p.presiones_nombre";
         $resultado = $conexion->prepare($consulta);
         $resultado->execute(array((int)$idPresion));
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);

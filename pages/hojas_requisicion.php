@@ -153,15 +153,15 @@ include __DIR__ . '/../includes/layout_top.php';
             <div class="modal-body">
                 <!-- Upload -->
                 <div id="cotUploadZone" class="cot-upload-zone rounded p-3 mb-3 d-none">
-                    <p class="mb-2 fw-semibold small">Adjuntar cotización (PDF, máx. 8 MB)</p>
+                    <p class="mb-2 fw-semibold small">Adjuntar cotización (PDF, JPG o PNG, máx. 8 MB)</p>
                     <div class="row g-2 align-items-end">
                         <div class="col-md-5">
                             <label class="form-label small mb-1">Nombre descriptivo</label>
                             <input type="text" id="cotNombreInput" class="form-control form-control-sm" placeholder="Ej: Cotización Proveedor A">
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label small mb-1">Archivo PDF</label>
-                            <input type="file" id="cotFileInput" class="form-control form-control-sm" accept=".pdf,application/pdf">
+                            <label class="form-label small mb-1">Archivo (PDF, JPG o PNG)</label>
+                            <input type="file" id="cotFileInput" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png">
                         </div>
                         <div class="col-md-2 d-grid">
                             <button class="btn btn-primary btn-sm" id="cotSubirBtn" onclick="window._cotApp && window._cotApp.subirCotizacion()">

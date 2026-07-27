@@ -20,10 +20,14 @@ switch ($accion) {
         break;
     case 2:
         $scope = tf_scope_obras_query($conexion, $currentUser);
+        $selectObras = "SELECT `obras`.*, `estadosobra`.`ciudadesObras_nombre` AS `ubicacion`
+            FROM `obras`
+            LEFT JOIN `estadosobra` ON `estadosobra`.`ciudadesObras_id` = `obras`.`obras_cuidad`
+            WHERE `obras`.`obras_estatus` = 'ACTIVO'" . $scope['sql'];
         if ($modo === 'recientes') {
-            $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO'" . $scope['sql'] . " ORDER BY `obras_id` DESC LIMIT " . $limite;
+            $consulta = $selectObras . " ORDER BY `obras`.`obras_id` DESC LIMIT " . $limite;
         } else {
-            $consulta = "SELECT * FROM `obras` WHERE `obras_estatus` = 'ACTIVO'" . $scope['sql'] . " ORDER BY `obras_nombre`";
+            $consulta = $selectObras . " ORDER BY `obras`.`obras_nombre`";
         }
         $resultado = $conexion->prepare($consulta);
         $resultado->execute($scope['params']);

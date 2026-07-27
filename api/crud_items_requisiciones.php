@@ -39,8 +39,9 @@ $writeActions = array(3, 4, 6, 7, 11, 12, 13, 15);
 if (in_array($accionInt, $writeActions, true)) {
     api_require_csrf($_POST);
     if ($accionInt === 11) {
-        // Ligado de requisicion / autorizacion direccion
-        tf_require_permission($conexion, 'requisiciones.authorize');
+        // Ligar hoja a presion: permiso real del catalogo RBAC
+        // (antes exigia 'requisiciones.authorize', que NO existe en BD -> 403 para todos)
+        tf_require_permission($conexion, 'hojas.ligar');
     } elseif ($accionInt === 4) {
         // Delete item de hoja
         tf_require_permission($conexion, 'requisiciones.edit');
@@ -87,6 +88,16 @@ function item_requisicion_obtener_obra_por_presion(PDO $conexion, $idPresion)
     return $obraId === false ? null : (int)$obraId;
 }
 
+function item_requisicion_validar_item(PDO $conexion, $idItem, $idHoja)
+{
+    $consulta = "SELECT 1 FROM `itemrequisicion` WHERE `itemRequisicion_id` = ? AND `itemRequisicion_idHoja` = ? LIMIT 1";
+    $resultado = $conexion->prepare($consulta);
+    $resultado->execute(array($idItem, $idHoja));
+    if ($resultado->fetchColumn() === false) {
+        api_json_error('El item no pertenece a la hoja indicada', 404);
+    }
+}
+
 function item_requisicion_validar_hoja(PDO $conexion, $idHoja, $currentUser)
 {
     $obraId = item_requisicion_obtener_obra_id($conexion, $idHoja);
@@ -131,7 +142,9 @@ switch ($accion) {
         break;
     case 3:
         item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
-        $consulta = "UPDATE `itemrequisicion` SET `itemRequisicion_unidad`=:unidad, `itemRequisicion_producto`=:producto, `itemRequisicion_iva`=:iva, `itemRequisicion_retenciones`=:retenciones, `itemRequisicion_banderaFlete`=:banderaFlete, `itemRequisicion_banderaFisica`=:banderaFisica, `itemRequisicion_banderaResico`=:banderaResico, `itemRequisicion_banderaISR`=:banderaISR, `itemRequisicion_precio`=:precio, `itemRequisicion_cantidad`=:cantidad WHERE `itemRequisicion_id` = :id";
+        item_requisicion_validar_item($conexion, (int)$id, (int)$idHoja);
+        // El item debe pertenecer a la hoja validada (evita editar items de otras hojas/obras)
+        $consulta = "UPDATE `itemrequisicion` SET `itemRequisicion_unidad`=:unidad, `itemRequisicion_producto`=:producto, `itemRequisicion_iva`=:iva, `itemRequisicion_retenciones`=:retenciones, `itemRequisicion_banderaFlete`=:banderaFlete, `itemRequisicion_banderaFisica`=:banderaFisica, `itemRequisicion_banderaResico`=:banderaResico, `itemRequisicion_banderaISR`=:banderaISR, `itemRequisicion_precio`=:precio, `itemRequisicion_cantidad`=:cantidad WHERE `itemRequisicion_id` = :id AND `itemRequisicion_idHoja` = :id_hoja";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':unidad', $unidad, PDO::PARAM_STR);
         $resultado->bindValue(':producto', $producto, PDO::PARAM_STR);
@@ -144,6 +157,7 @@ switch ($accion) {
         $resultado->bindValue(':precio', $precio, PDO::PARAM_STR);
         $resultado->bindValue(':cantidad', $cantidad, PDO::PARAM_STR);
         $resultado->bindValue(':id', (int)$id, PDO::PARAM_INT);
+        $resultado->bindValue(':id_hoja', (int)$idHoja, PDO::PARAM_INT);
         $resultado->execute();
         $data = actualizarTotalHoja($conexion, (int)$idHoja);
         tf_audit_log($conexion, 'requisiciones.item.edit', 'itemrequisicion', (int)$id, array(
@@ -155,9 +169,11 @@ switch ($accion) {
         break;
     case 4:
         item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
-        $consulta = "DELETE FROM `itemrequisicion` WHERE `itemRequisicion_id` = :id";
+        item_requisicion_validar_item($conexion, (int)$id, (int)$idHoja);
+        $consulta = "DELETE FROM `itemrequisicion` WHERE `itemRequisicion_id` = :id AND `itemRequisicion_idHoja` = :id_hoja";
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':id', (int)$id, PDO::PARAM_INT);
+        $resultado->bindValue(':id_hoja', (int)$idHoja, PDO::PARAM_INT);
         $resultado->execute();
         $data = actualizarTotalHoja($conexion, (int)$idHoja);
         tf_audit_log($conexion, 'requisiciones.item.delete', 'itemrequisicion', (int)$id, array(
@@ -198,7 +214,10 @@ switch ($accion) {
         ));
         break;
     case 7:
-        item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
+        // El frontend (solicitarRevision) envia el id de la hoja en `id_req`;
+        // se acepta tambien `id_Hoja` y se valida/actualiza el MISMO id.
+        $hojaRevision = (int)($idHoja !== '' ? $idHoja : $idReq);
+        item_requisicion_validar_hoja($conexion, $hojaRevision, $currentUser);
         $consulta =  "
             UPDATE hojasrequisicion
             SET hojaRequisicion_estatus       = :estatus,
@@ -208,13 +227,13 @@ switch ($accion) {
         $resultado = $conexion->prepare($consulta);
         $resultado->bindValue(':estatus', 'REVISION', PDO::PARAM_STR);
         $resultado->bindValue(':obs', $comentarios, PDO::PARAM_STR);
-        $resultado->bindValue(':id', $idReq, PDO::PARAM_INT);
+        $resultado->bindValue(':id', $hojaRevision, PDO::PARAM_INT);
         $resultado->execute();
-        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
-        tf_audit_log($conexion, 'requisiciones.hoja.toRevision', 'hojasrequisicion', (int)$idReq, array(
+        $data = array('status' => 'ok', 'id_hoja' => $hojaRevision);
+        tf_audit_log($conexion, 'requisiciones.hoja.toRevision', 'hojasrequisicion', $hojaRevision, array(
             'comentarios' => $comentarios,
         ));
-        tf_hoja_estatus_log($conexion, (int)$idReq, null, 'REVISION', $comentarios, $currentUser);
+        tf_hoja_estatus_log($conexion, $hojaRevision, null, 'REVISION', $comentarios, $currentUser);
         break;
     case 8:
         $consulta = "SELECT `obras_nombre`,`ciudadesObras_nombre` FROM `obras` JOIN estadosobra ON estadosobra.ciudadesObras_id = obras.obras_cuidad WHERE `obras_id` = :obra";
@@ -251,9 +270,22 @@ switch ($accion) {
         $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
         break;
     case 11:
-        item_requisicion_validar_presion($conexion, $idPresion, $currentUser);
+        $obraPresion = item_requisicion_validar_presion($conexion, $idPresion, $currentUser);
         item_requisicion_validar_requisicion($conexion, $idReq, $currentUser);
-        item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
+        $obraHoja = item_requisicion_validar_hoja($conexion, $idHoja, $currentUser);
+
+        // Integridad: la hoja debe pertenecer a la requisicion indicada
+        // y la presion debe ser de la MISMA obra que la hoja (evita ligas cruzadas, BD-4).
+        $stPerteneceHoja = $conexion->prepare(
+            "SELECT 1 FROM `hojasrequisicion` WHERE `hojaRequisicion_id` = ? AND `hojaRequisicion_idReq` = ? LIMIT 1"
+        );
+        $stPerteneceHoja->execute(array((int)$idHoja, (int)$idReq));
+        if ($stPerteneceHoja->fetchColumn() === false) {
+            api_json_error('La hoja no pertenece a la requisicion indicada', 422);
+        }
+        if ((int)$obraPresion !== (int)$obraHoja) {
+            api_json_error('La presion y la hoja pertenecen a obras distintas', 422);
+        }
         try {
             // Inicia transacción
             $conexion->beginTransaction();

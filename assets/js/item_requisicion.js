@@ -552,7 +552,9 @@ function itemRequisicionApp() {
         */
         agregarItem: async function () {
             // Muestra una alerta de confirmación para preguntar si se desea agregar otro item
-            const { value: formValues } = await Swal.fire({
+            // (el resultado de este primer paso no se usa; el formulario real lo
+            // captura addItemAlert() dentro del then de abajo)
+            await Swal.fire({
                 // Título del modal de confirmación para agregar un nuevo item a la hoja
                 title: "¿Quieres Agregar otro item a esta Requisicion Existente?",
                 // Mostrar botón de cancelar en el modal
@@ -1292,6 +1294,31 @@ function itemRequisicionApp() {
 
                 const proveedorSeleccionado = response.data[index];
 
+                // Confirmacion con los datos reales del proveedor antes de aplicar
+                // el cambio (antes no habia forma de validar a quien se cambiaba).
+                const confirmacion = await Swal.fire({
+                    title: '¿Confirmar cambio de proveedor?',
+                    html: `
+                        <div style="text-align:left">
+                            <p class="mb-2"><strong>${proveedorSeleccionado.proveedor_nombre || ''}</strong></p>
+                            <p class="mb-1">RFC: ${proveedorSeleccionado.proveedor_rfc || '—'}</p>
+                            <p class="mb-1">CLABE: ${proveedorSeleccionado.proveedor_clabe || '—'}</p>
+                            <p class="mb-1">Banco: ${proveedorSeleccionado.proveedor_banco || '—'}</p>
+                            <p class="mb-0">Cuenta: ${proveedorSeleccionado.proveedor_numeroCuenta || '—'}</p>
+                        </div>
+                    `,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Cambiar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#0d6efd',
+                    cancelButtonColor: '#dc3545'
+                });
+
+                if (!confirmacion.isConfirmed) {
+                    return;
+                }
+
                 const cambioExitoso = await this.changeProveedor(idProveedor);
 
                 if (cambioExitoso) {
@@ -1318,15 +1345,18 @@ function itemRequisicionApp() {
             }
         },
         changeProveedor: function (id_Prov) {
-            axios.post(url, { accion: 15, id_Hoja: localStorage.getItem("idHoja"), id_Prov: id_Prov }).then(Response => {
-                if (response.data == 1) {
-                    return true;
-                }
-            }).catch(error => {
-                console.error("Error al cambiar de proveedor " + error);
-                return false;
-            })
-            return true;
+            // Antes retornaba `true` sin esperar la respuesta real del servidor
+            // (y comparaba contra `response`, la lista de proveedores capturada
+            // por el closure de cambiarProveedor, nunca la respuesta de esta
+            // llamada) -> el toast siempre decia "exito" aunque el POST fallara.
+            return axios.post(url, { accion: 15, id_Hoja: localStorage.getItem("idHoja"), id_Prov: id_Prov })
+                .then(function (resp) {
+                    return resp.data === 1;
+                })
+                .catch(function (error) {
+                    console.error("Error al cambiar de proveedor " + error);
+                    return false;
+                });
         },
         obtenerNumeroAntesDelGuion: function (cadena) {
             // Buscar el índice del primer guion
